@@ -1,3 +1,4 @@
+use gdk::Screen;
 use gtk::{ContainerExt, GtkWindowExt, WidgetExt};
 
 pub mod accelerators;
@@ -14,7 +15,14 @@ pub fn build(application: &gtk::Application) {
     window.set_title("Kaati Ako");
     window.set_border_width(10);
     window.set_position(gtk::WindowPosition::Center);
-    window.set_default_size(350, 70);
+    match Screen::get_default() {
+        Some(screen) => {
+            let width = screen.get_width() / 2;
+            let height = screen.get_height() / 2;
+            window.set_default_size(width, height);
+        },
+        None => { window.set_default_size(350, 70); }
+    }
     window.add(&build_content(&window));
     build_system_menu(application);
     add_accelerators(application);
