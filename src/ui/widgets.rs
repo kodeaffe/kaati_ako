@@ -22,7 +22,8 @@ pub fn build_card() -> gtk::Notebook {
         let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         page.set_homogeneous(false);
 
-        let text = gtk::Label::new(Some(&translation.text));
+        let text = gtk::Label::new(Some(""));
+        text.set_markup(&format!("<span font_desc='30.0'>{}</span>", &translation.text));
         page.pack_start(&text, true, true, padding);
 
         let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
