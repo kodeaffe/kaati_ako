@@ -1,3 +1,4 @@
+use std::fs;
 use std::env::args;
 
 use gio::prelude::*;
@@ -8,7 +9,11 @@ mod util;
 use util::database::{connect_database, create_database, get_random_card};
 
 
+const VERSION: &str = "0.1.0";
+
+
 fn add_accelerators(application: &gtk::Application) {
+    application.set_accels_for_action("app.about", &["F1"]);
     // `Primary` is a platform-agnostic accelerator modifier.
     // On Windows and Linux, `Primary` maps to the `Ctrl` key,
     // and on macOS it maps to the `command` key.
@@ -22,6 +27,25 @@ fn add_actions(application: &gtk::Application, window: &gtk::ApplicationWindow) 
         window.close();
     }));
     application.add_action(&quit);
+
+    let about = gio::SimpleAction::new("about", None);
+    about.connect_activate(glib::clone!(@weak window => move |_, _| {
+        let dialog = gtk::AboutDialog::new();
+        dialog.set_authors(&["kodeaffe"]);
+        let licence = fs::read_to_string("LICENSE").unwrap();
+        dialog.set_comments(Some("This application will hopefully help in learning a language."));
+        dialog.set_copyright(Some("All rights reversed"));
+        dialog.set_license(Some(&licence));
+        dialog.set_logo_icon_name(Some("accessories-dictionary"));
+        dialog.set_program_name("kaati ako");
+        dialog.set_website_label(Some("kaati ako on github"));
+        dialog.set_website(Some("https://github.com/kodeaffe/kaati_ako"));
+        dialog.set_title("About");
+        dialog.set_transient_for(Some(&window));
+        dialog.set_version(Some(VERSION));
+        dialog.show_all();
+    }));
+    application.add_action(&about);
 }
 
 fn build_card() -> gtk::Notebook {
@@ -49,6 +73,13 @@ fn build_system_menu(application: &gtk::Application) {
     let menu = gio::Menu::new();
     menu.append(Some("Quit"), Some("app.quit"));
     application.set_app_menu(Some(&menu));
+
+    let menu_bar = gio::Menu::new();
+    let more_menu = gio::Menu::new();
+    more_menu.append(Some("About"), Some("app.about"));
+    menu_bar.append_submenu(Some("?"), &more_menu);
+    application.set_menubar(Some(&menu_bar));
+
 }
 
 
