@@ -3,7 +3,7 @@ use std::fs;
 use glib;
 use gtk::{AboutDialogExt, ActionBarExt, BoxExt, ButtonExt, GtkApplicationExt, GtkWindowExt, WidgetExt, prelude::NotebookExtManual, LabelExt};
 
-use crate::util::database::{connect_database, get_random_card};
+use crate::util::database::{connect_database, Card};
 use crate::VERSION;
 use super::actions::{action_next_card};
 
@@ -14,7 +14,7 @@ pub const WIDGET_NAME_CARD: &str = "card";
 
 pub fn build_card() -> gtk::Notebook {
     let conn = connect_database();
-    let card = get_random_card(&conn);
+    let card = Card::get_random(&conn);
     let padding = 10;
     let notebook = gtk::Notebook::new();
     notebook.set_widget_name(WIDGET_NAME_CARD);
@@ -34,7 +34,7 @@ pub fn build_card() -> gtk::Notebook {
             page_bottom.pack_start(&description, false, false, padding);
         }
         let category = gtk::Label::new(Some(""));
-        category.set_markup(&format!("Category: <b>{}</b>", card.category));
+        category.set_markup(&format!("Category: <b>{}</b>", card.category.name));
         page_bottom.pack_end(&category, false, false, padding);
         page.pack_start(&page_bottom, false, false, padding);
 
