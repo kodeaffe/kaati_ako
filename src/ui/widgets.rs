@@ -1,16 +1,7 @@
 use std::fs;
 
 use glib;
-use gtk::{
-    AboutDialogExt,
-    ActionBarExt,
-    BoxExt,
-    ButtonExt,
-    GtkApplicationExt,
-    GtkWindowExt,
-    WidgetExt,
-    prelude::NotebookExtManual,
-};
+use gtk::{AboutDialogExt, ActionBarExt, BoxExt, ButtonExt, GtkApplicationExt, GtkWindowExt, WidgetExt, prelude::NotebookExtManual, LabelExt};
 
 use crate::util::database::{connect_database, get_random_card};
 use crate::VERSION;
@@ -24,18 +15,29 @@ pub const WIDGET_NAME_CARD: &str = "card";
 pub fn build_card() -> gtk::Notebook {
     let conn = connect_database();
     let card = get_random_card(&conn);
+    let padding = 10;
     let notebook = gtk::Notebook::new();
     notebook.set_widget_name(WIDGET_NAME_CARD);
     for translation in card.translations {
         let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        page.set_homogeneous(false);
+
         let text = gtk::Label::new(Some(&translation.text));
-        page.pack_start(&text, true, true, 10);
+        page.pack_start(&text, true, true, padding);
+
+        let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
+        page.pack_start(&separator, false, false, padding);
+
+        let page_bottom = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         if translation.description != "" {
-            let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
-            page.pack_start(&separator, false, false, 10);
             let description = gtk::Label::new(Some(&translation.description));
-            page.pack_start(&description, true, true, 10);
+            page_bottom.pack_start(&description, false, false, padding);
         }
+        let category = gtk::Label::new(Some(""));
+        category.set_markup(&format!("Category: <b>{}</b>", card.category));
+        page_bottom.pack_end(&category, false, false, padding);
+        page.pack_start(&page_bottom, false, false, padding);
+
         let tab_label = gtk::Label::new(Some(&translation.language.name));
         notebook.append_page(&page, Some(&tab_label));
     }
