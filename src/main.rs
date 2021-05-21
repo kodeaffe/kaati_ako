@@ -6,7 +6,7 @@ use glib;
 use gtk::prelude::*;
 
 mod util;
-use util::database::{connect_database, create_database, get_random_card};
+use util::database::{connect_database, get_random_card};
 
 
 const VERSION: &str = "0.1.0";
@@ -123,8 +123,10 @@ fn build_ui(application: &gtk::Application) {
 
 
 fn main() {
+    /*
     let conn = connect_database();
     create_database(&conn);
+    */
 
     let application = gtk::Application::new(
             Some("com.github.kodeaffe.kaati_ako"), Default::default()).unwrap();

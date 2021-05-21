@@ -29,6 +29,7 @@ pub fn connect_database() -> Connection {
     open(DB).unwrap()
 }
 
+#[allow(dead_code)]
 pub fn create_database(conn: &Connection) {
     conn
         .execute("
