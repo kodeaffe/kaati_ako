@@ -10,14 +10,43 @@ use util::database::{connect_database, get_random_card};
 
 
 const VERSION: &str = "0.1.0";
+const WIDGET_NAME_CARD_BOX: &str = "card_box";
+const WIDGET_NAME_CARD: &str = "card";
 
 
 fn add_accelerators(application: &gtk::Application) {
     application.set_accels_for_action("app.about", &["F1"]);
+    application.set_accels_for_action("app.next_card", &["n"]);
     // `Primary` is a platform-agnostic accelerator modifier.
     // On Windows and Linux, `Primary` maps to the `Ctrl` key,
     // and on macOS it maps to the `command` key.
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+}
+
+fn action_next_card(window: &gtk::ApplicationWindow) {
+    for widget in window.get_children() {
+        if widget.get_widget_name() == WIDGET_NAME_CARD_BOX {
+            match widget.downcast::<gtk::Box>() {
+                Ok(vbox) => {
+                    for child in vbox.get_children() {
+                        if child.get_widget_name() == WIDGET_NAME_CARD {
+                            match child.downcast::<gtk::Notebook>() {
+                                Ok(card) => {
+                                    vbox.remove(&card);
+                                    let card = build_card();
+                                    vbox.pack_start(&card, true, true, 10);
+                                    vbox.show_all();
+                                    return;
+                                },
+                                _ => {},
+                            }
+                        }
+                    }
+                },
+                _ => {},
+            }
+        }
+    }
 }
 
 
@@ -46,12 +75,19 @@ fn add_actions(application: &gtk::Application, window: &gtk::ApplicationWindow) 
         dialog.show_all();
     }));
     application.add_action(&about);
+
+    let next_card = gio::SimpleAction::new("next_card", None);
+    next_card.connect_activate(glib::clone!(@weak window => move |_, _| {
+        action_next_card(&window);
+    }));
+    application.add_action(&next_card);
 }
 
 fn build_card() -> gtk::Notebook {
     let conn = connect_database();
     let card = get_random_card(&conn);
     let notebook = gtk::Notebook::new();
+    notebook.set_widget_name(WIDGET_NAME_CARD);
     for translation in card.translations {
         let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let text = gtk::Label::new(Some(&translation.text));
@@ -91,6 +127,7 @@ fn build_ui(application: &gtk::Application) {
     window.set_default_size(350, 70);
 
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    vbox.set_widget_name(WIDGET_NAME_CARD_BOX);
     window.add(&vbox);
 
     let card = build_card();
@@ -99,24 +136,16 @@ fn build_ui(application: &gtk::Application) {
     let action_bar = gtk::ActionBar::new();
     let next = gtk::Button::from_icon_name(
         Some("go-next"), gtk::IconSize::Button);
-    next.connect_clicked(glib::clone!(@weak vbox => move |_| {
-        for child in vbox.get_children() {
-            match child.downcast::<gtk::Notebook>() {
-                Ok(card) => {
-                    vbox.remove(&card);
-                    let card = build_card();
-                    vbox.pack_start(&card, true, true, 10);
-                    vbox.show_all();
-                    break;
-                },
-                _ => {},
-            }
-        }
+    next.connect_clicked(glib::clone!(@weak window => move |_| {
+        action_next_card(&window);
     }));
     action_bar.pack_start(&next);
+    let label = gtk::Label::new(Some("Press button or 'n' for next random card."));
+    action_bar.pack_start(&label);
     vbox.pack_end(&action_bar, false, false, 0);
 
     build_system_menu(application);
+    add_accelerators(application);
     add_actions(application, &window);
     window.show_all();
 }
@@ -129,10 +158,9 @@ fn main() {
     */
 
     let application = gtk::Application::new(
-            Some("com.github.kodeaffe.kaati_ako"), Default::default()).unwrap();
-    application.connect_startup(|app| {
-        add_accelerators(app);
+        Some("com.github.kodeaffe.kaati_ako"), Default::default()).unwrap();
+    application.connect_activate(|app| {
+        build_ui(app);
     });
-    application.connect_activate(build_ui);
     application.run(&args().collect::<Vec<_>>());
 }
