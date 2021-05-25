@@ -1,0 +1,6 @@
+- Add install command and a .desktop file
+- Make UI translatable (gettext-rs?)
+- Create a card editor
+- Add settings to e.g. only show chosen languages
+- Extend card data!
+- Build as web assembly
