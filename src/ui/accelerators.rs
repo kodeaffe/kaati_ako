@@ -1,6 +1,11 @@
+//! Handle application accelerators
+
 use gtk::GtkApplicationExt;
 
 
+/// Add accelerators for the application
+///
+/// Currently it handles 'F1', 'n' and 'Ctrl-Q'
 pub fn add_accelerators(application: &gtk::Application) {
     application.set_accels_for_action("app.about", &["F1"]);
     application.set_accels_for_action("app.next_card", &["n"]);

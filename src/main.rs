@@ -1,3 +1,13 @@
+//! Kaati Ako
+//!
+//! This is a little application to learn another language by flash cards. 'kaati ako' means 'flash
+//! card' in Tongan.
+//! You simply run it without any parameters.
+//!
+//! # Panics
+//! It currently panics on startup when the prepared database file can not be found in the current
+//! directory.
+
 use std::env::args;
 
 use gio::prelude::{ApplicationExt, ApplicationExtManual};
@@ -9,9 +19,11 @@ use ui::build;
 //use util::database::{Card, Translation, connect_database};
 
 
+/// The version of application (ideally, this would be taken from `Cargo.toml`)
 const VERSION: &str = "0.1.0";
 
 
+/// Build the application and run it
 fn main() {
     /*
     let conn = connect_database();

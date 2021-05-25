@@ -1,3 +1,5 @@
+//! Contains code to build the user interface
+
 use gdk::Screen;
 use gtk::{ContainerExt, GtkWindowExt, WidgetExt};
 
@@ -10,6 +12,7 @@ use actions::add_actions;
 use widgets::{build_content, build_system_menu};
 
 
+/// Build the application's user interface with window parametrisation and widgets
 pub fn build(application: &gtk::Application) {
     let window = gtk::ApplicationWindow::new(application);
     window.set_title("Kaati Ako");

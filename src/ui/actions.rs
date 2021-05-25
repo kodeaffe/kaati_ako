@@ -1,14 +1,17 @@
+//! Handle application actions
+
 use gio::ActionMapExt;
 use glib::Cast;
 use gtk::{BoxExt, ContainerExt, GtkWindowExt, WidgetExt};
 
-use super::widgets::{WIDGET_NAME_CARD, WIDGET_NAME_CARD_BOX, build_card, show_about};
+use super::widgets::{WIDGET_NAME_CARD, WIDGET_NAME_CONTENT, build_card, show_about};
 
 
+/// Action to deal the next flash card
 pub fn action_next_card(window: &gtk::ApplicationWindow) {
     // TODO: Is there a better way to find the box and card?
     for widget in window.get_children() {
-        if widget.get_widget_name() == WIDGET_NAME_CARD_BOX {
+        if widget.get_widget_name() == WIDGET_NAME_CONTENT {
             match widget.downcast::<gtk::Box>() {
                 Ok(vbox) => {
                     for child in vbox.get_children() {
@@ -34,6 +37,7 @@ pub fn action_next_card(window: &gtk::ApplicationWindow) {
 }
 
 
+/// Add actions for the application
 pub fn add_actions(application: &gtk::Application, window: &gtk::ApplicationWindow) {
     let quit = gio::SimpleAction::new("quit", None);
     quit.connect_activate(glib::clone!(@weak window => move |_, _| {

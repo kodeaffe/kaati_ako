@@ -1,32 +1,47 @@
+//! Handle the database
+
 use sqlite::{Connection, Value, open};
 
 
-const DB: &str = "kaati_ako.sqlite";
+/// Path to the database file
+const DB_PATH: &str = "kaati_ako.sqlite";
 
+/// A flash card category
 #[derive(Debug)]
 pub struct Category {
+    /// Identifier of the category
     pub id: i64,
+    /// Name of the category
     pub name: String,
 }
 
-
+/// The language of a flash card translation
 #[derive(Debug)]
 pub struct Language {
+    /// Identifier of the language
     pub id: i64,
+    /// Code of the language as in [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)
     pub code: String,
+    /// Name of the language
     pub name: String,
 }
 
+/// A flash card's translation
 #[derive(Debug)]
 pub struct Translation {
+    /// Identifier of the translation
     pub id: i64,
+    /// Language the translation is made in
     pub language: Language,
+    /// The value of the translation
     pub text: String,
+    /// An optional description with examples or further explanations
     pub description: String,
 }
 
 #[allow(dead_code)]
 impl Translation {
+    /// Insert a translation in a given language for a given card
     pub fn add(
         conn: &Connection, card_id: i64, language_id: i64, text: &str, description: &str) -> i64 {
         let mut cursor = conn
@@ -43,6 +58,7 @@ impl Translation {
         last_insert_id(conn, "translation")
     }
 
+    /// Select all translations for a given card
     pub fn get_all(conn: &Connection, card_id: i64) -> Vec<Translation> {
         let mut cursor = conn
             .prepare("
@@ -72,16 +88,20 @@ impl Translation {
     }
 }
 
-
+/// A flash card
 #[derive(Debug)]
 pub struct Card {
+    /// Identifier of the card
     pub id: i64,
+    /// Category of the card
     pub category: Category,
+    /// Translations for the card
     pub translations: Vec<Translation>,
 }
 
 #[allow(dead_code)]
 impl Card {
+    /// Insert a flash card for given category
     pub fn add(conn: &Connection, category_id: i64) -> i64 {
         let mut cursor = conn
             .prepare("INSERT INTO card (category_id) VALUES (?)").unwrap().cursor();
@@ -90,6 +110,7 @@ impl Card {
         last_insert_id(conn, "card")
     }
 
+    /// Select all flash cards with translations
     #[allow(dead_code)]
     pub fn get_all(conn: &Connection) -> Vec<Card> {
         let mut cursor = conn
@@ -117,6 +138,7 @@ impl Card {
         cards
     }
 
+    /// Select a random flash card with translations
     pub fn get_random(conn: &Connection) -> Card {
         let mut cursor = conn
             .prepare("
@@ -144,11 +166,13 @@ impl Card {
 }
 
 
+/// Create a connection to the database and return a handler to use in future queries
 pub fn connect_database() -> Connection {
-    open(DB).unwrap()
+    open(DB_PATH).unwrap()
 }
 
 
+/// Create a new database from scratch, including some fixture data
 #[allow(dead_code)]
 pub fn create_database(conn: &Connection) {
     conn
@@ -204,6 +228,7 @@ pub fn create_database(conn: &Connection) {
     //println!("cards: {:?}", Card::get_all(&conn);
 }
 
+/// Get the identifier of the last inserted item in the given table
 #[allow(dead_code)]
 pub fn last_insert_id(conn: &Connection, table_name: &str) -> i64 {
     // Cannot prepare `SELECT last_insert_rowid() FROM ?` ... Bug?

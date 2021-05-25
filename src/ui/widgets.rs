@@ -1,3 +1,5 @@
+//! Build the application widgets
+
 use std::fs;
 
 use glib;
@@ -8,10 +10,13 @@ use crate::VERSION;
 use super::actions::{action_next_card};
 
 
-pub const WIDGET_NAME_CARD_BOX: &str = "card_box";
+/// The name of content widget which contains the flash card
+pub const WIDGET_NAME_CONTENT: &str = "content";
+/// The name of flash card's widget
 pub const WIDGET_NAME_CARD: &str = "card";
 
 
+/// Build a flash card as Notebook widget
 pub fn build_card() -> gtk::Notebook {
     let conn = connect_database();
     let card = Card::get_random(&conn);
@@ -47,6 +52,7 @@ pub fn build_card() -> gtk::Notebook {
 }
 
 
+/// Build the application's action bar
 fn build_action_bar(window: &gtk::ApplicationWindow) -> gtk::ActionBar {
     let action_bar = gtk::ActionBar::new();
     let next = gtk::Button::from_icon_name(
@@ -61,9 +67,10 @@ fn build_action_bar(window: &gtk::ApplicationWindow) -> gtk::ActionBar {
 }
 
 
+/// Build the application's content area with flash card and action bar
 pub fn build_content(window: &gtk::ApplicationWindow) -> gtk::Box {
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    content.set_widget_name(WIDGET_NAME_CARD_BOX);
+    content.set_widget_name(WIDGET_NAME_CONTENT);
     let card = build_card();
     content.pack_start(&card, true, true, 10);
     let action_bar = build_action_bar(window);
@@ -72,6 +79,7 @@ pub fn build_content(window: &gtk::ApplicationWindow) -> gtk::Box {
 }
 
 
+/// Build the application's system menu
 pub fn build_system_menu(application: &gtk::Application) {
     let menu = gio::Menu::new();
     menu.append(Some("Quit"), Some("app.quit"));
@@ -84,7 +92,7 @@ pub fn build_system_menu(application: &gtk::Application) {
     application.set_menubar(Some(&menu_bar));
 }
 
-
+/// Show an about dialog
 pub fn show_about(window: &gtk::ApplicationWindow) {
     let dialog = gtk::AboutDialog::new();
     dialog.set_authors(&["kodeaffe"]);
