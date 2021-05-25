@@ -1,4 +1,4 @@
-- Add command-line parsing for database file or create new database
+- Improve error reporting
 - Make UI translatable (gettext-rs?)
 - Create a card editor
 - Add settings to e.g. only show chosen languages and choose database file

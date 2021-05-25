@@ -5,8 +5,8 @@ use std::fs;
 use glib;
 use gtk::{AboutDialogExt, ActionBarExt, BoxExt, ButtonExt, GtkApplicationExt, GtkWindowExt, WidgetExt, prelude::NotebookExtManual, LabelExt};
 
-use crate::util::database::{connect_database, Card};
-use crate::VERSION;
+use crate::util::database::Card;
+use crate::{DB_CONNECTION, VERSION};
 use super::actions::{action_next_card};
 
 
@@ -18,8 +18,13 @@ pub const WIDGET_NAME_CARD: &str = "card";
 
 /// Build a flash card as Notebook widget
 pub fn build_card() -> gtk::Notebook {
-    let conn = connect_database();
-    let card = Card::get_random(&conn);
+    let mut card = Card::get_empty();
+    DB_CONNECTION.with(|cell| {
+        card = match cell.borrow().as_ref() {
+            Some(conn) => Card::get_random(&conn),
+            None => Card::get_empty(),
+        };
+    });
     let padding = 10;
     let notebook = gtk::Notebook::new();
     notebook.set_widget_name(WIDGET_NAME_CARD);

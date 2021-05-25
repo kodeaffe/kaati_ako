@@ -1,10 +1,7 @@
 //! Handle the database
 
-use sqlite::{Connection, Value, open};
+use sqlite::{Connection, Value};
 
-
-/// Path to the database file
-const DB_PATH: &str = "kaati_ako.sqlite";
 
 /// A flash card category
 #[derive(Debug)]
@@ -138,6 +135,15 @@ impl Card {
         cards
     }
 
+    /// Instantiate an empty card
+    pub fn get_empty() -> Card {
+        Card {
+            id: 0,
+            category: Category { id: 0, name: "None".to_string() },
+            translations: Vec::new(),
+        }
+    }
+
     /// Select a random flash card with translations
     pub fn get_random(conn: &Connection) -> Card {
         let mut cursor = conn
@@ -163,12 +169,6 @@ impl Card {
         }
         Card { id: 0, category: Category {id: 0, name: "".to_string()}, translations: Vec::new()}
     }
-}
-
-
-/// Create a connection to the database and return a handler to use in future queries
-pub fn connect_database() -> Connection {
-    open(DB_PATH).unwrap()
 }
 
 
