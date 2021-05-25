@@ -22,3 +22,13 @@ This package uses a SQLite database.
 ## Run
 
 - Simply execute `cargo run --release`.
+
+
+## Installation
+
+- If you want to install the binary to your cargo bin, run `cargo install --path .` .
+- You currently need to manually copy the database file `kaati_ako.sqlite` to your home directory (or any directory
+  from where you run), otherwise the binary will panic on startup.
+- Afterwards you can run the binary with `kaati_ako`.
+- You can copy the provided `assets/kaati_ako.desktop` manually into `~/.local/share/applications/` and it should be
+  available by your desktop's program starter.

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Kaati Ako
+Comment=Learn language vocabulary by flash cards - 'kaati ako' in Tongan.
+Exec=kaati_ako
+#Icon=
+Terminal=false
+Type=Application
+Categories=Education;
+Keywords=language;learn;flash card;
