@@ -1,10 +1,12 @@
 [package]
 name = "kaati_ako"
+description = "Learn language vocabulary by flash cards - 'kaati ako' in Tongan."
+repository = "https://github.com/kodeaffe/kaati_ako"
+license-file = "LICENSE"
 version = "0.1.0"
 authors = ["kodeaffe <lahi+kodeaffe@posteo.de>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 gdk = "0.13.2"
