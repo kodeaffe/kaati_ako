@@ -18,6 +18,7 @@ pub fn build_card() -> gtk::Notebook {
     let padding = 10;
     let notebook = gtk::Notebook::new();
     notebook.set_widget_name(WIDGET_NAME_CARD);
+    notebook.grab_focus();
     for translation in card.translations {
         let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         page.set_homogeneous(false);
@@ -54,7 +55,7 @@ fn build_action_bar(window: &gtk::ApplicationWindow) -> gtk::ActionBar {
         action_next_card(&window);
     }));
     action_bar.pack_start(&next);
-    let label = gtk::Label::new(Some("Press button or 'n' for next random card."));
+    let label = gtk::Label::new(Some("Press button or type <n> for next random card."));
     action_bar.pack_start(&label);
     action_bar
 }

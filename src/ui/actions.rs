@@ -6,6 +6,7 @@ use super::widgets::{WIDGET_NAME_CARD, WIDGET_NAME_CARD_BOX, build_card, show_ab
 
 
 pub fn action_next_card(window: &gtk::ApplicationWindow) {
+    // TODO: Is there a better way to find the box and card?
     for widget in window.get_children() {
         if widget.get_widget_name() == WIDGET_NAME_CARD_BOX {
             match widget.downcast::<gtk::Box>() {
@@ -18,6 +19,7 @@ pub fn action_next_card(window: &gtk::ApplicationWindow) {
                                     let card = build_card();
                                     vbox.pack_start(&card, true, true, 10);
                                     vbox.show_all();
+                                    card.grab_focus(); // Focus must be grabbed after being shown
                                     return;
                                 },
                                 _ => {},
