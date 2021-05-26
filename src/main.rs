@@ -8,7 +8,6 @@
 //! It currently panics on startup when the prepared database file can not be found in the current
 //! directory.
 
-use std::env::args;
 use std::cell::RefCell;
 
 use gio::prelude::{ApplicationExt, ApplicationExtManual};
@@ -20,6 +19,9 @@ mod util;
 use ui::build;
 //use util::database::{Card, Translation, connect_database};
 
+
+/// Default path to database file
+const DEFAULT_DB_PATH: &str = "kaati_ako.sqlite";
 
 /// The version of application (ideally, this would be taken from `Cargo.toml`)
 const VERSION: &str = "0.1.0";
@@ -58,15 +60,24 @@ fn main() {
             Some(path) => {
                 let path = path.to_string();
                 // Is this a bug in gtk-rs? Need to strip extra ' from first and last index
-                path[1..path.len() - 1].to_string()
+                let path = path[1..path.len() - 1].to_string();
+                if std::path::Path::new(&path).exists() {
+                    path
+                } else {
+                    eprintln!("Database file '{}' does not exist.", path);
+                    std::process::exit(1);
+                }
             },
-            None => "kaati_ako.sqlite".to_string(),
+            None => DEFAULT_DB_PATH.to_string(),
         };
         // Open a connection to database and put it into thread-local storage
         DB_CONNECTION.with(|cell| {
-            *cell.borrow_mut() = match sqlite::open(db_path) {
+            *cell.borrow_mut() = match sqlite::open(&db_path) {
                 Ok(conn) => Some(conn),
-                _ => None,
+                Err(err) => {
+                    eprintln!("{}", err.to_string());
+                    std::process::exit(2);
+                },
             }
         });
         -1 // Application will continue running
@@ -74,5 +85,5 @@ fn main() {
     application.connect_activate(|app| {
         build(app);
     });
-    application.run(&args().collect::<Vec<_>>());
+    application.run(&std::env::args().collect::<Vec<_>>());
 }

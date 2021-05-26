@@ -1,4 +1,5 @@
-- Improve error reporting
+- Refactor Card, Category, Language, Translation into models module
+- Replace global DB_CONNECTION by configuration file?
 - Make UI translatable (gettext-rs?)
 - Create a card editor
 - Add settings to e.g. only show chosen languages and choose database file

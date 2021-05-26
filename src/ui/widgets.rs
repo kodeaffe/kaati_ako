@@ -3,10 +3,10 @@
 use std::fs;
 
 use glib;
-use gtk::{AboutDialogExt, ActionBarExt, BoxExt, ButtonExt, GtkApplicationExt, GtkWindowExt, WidgetExt, prelude::NotebookExtManual, LabelExt};
+use gtk::{AboutDialogExt, ActionBarExt, BoxExt, ButtonExt, GtkApplicationExt, GtkWindowExt, WidgetExt, prelude::NotebookExtManual, LabelExt, DialogExt};
 
 use crate::util::database::Card;
-use crate::{DB_CONNECTION, VERSION};
+use crate::VERSION;
 use super::actions::{action_next_card};
 
 
@@ -17,14 +17,15 @@ pub const WIDGET_NAME_CARD: &str = "card";
 
 
 /// Build a flash card as Notebook widget
-pub fn build_card() -> gtk::Notebook {
-    let mut card = Card::get_empty();
-    DB_CONNECTION.with(|cell| {
-        card = match cell.borrow().as_ref() {
-            Some(conn) => Card::get_random(&conn),
-            None => Card::get_empty(),
-        };
-    });
+pub fn build_card(window: &gtk::ApplicationWindow) -> gtk::Notebook {
+    let card = match Card::get_random() {
+        Ok(card) => card,
+        Err(err) => {
+            show_error(window, &err.to_string());
+            Card::get_empty()
+        }
+    };
+
     let padding = 10;
     let notebook = gtk::Notebook::new();
     notebook.set_widget_name(WIDGET_NAME_CARD);
@@ -76,7 +77,7 @@ fn build_action_bar(window: &gtk::ApplicationWindow) -> gtk::ActionBar {
 pub fn build_content(window: &gtk::ApplicationWindow) -> gtk::Box {
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.set_widget_name(WIDGET_NAME_CONTENT);
-    let card = build_card();
+    let card = build_card(window);
     content.pack_start(&card, true, true, 10);
     let action_bar = build_action_bar(window);
     content.pack_end(&action_bar, false, false, 0);
@@ -100,8 +101,15 @@ pub fn build_system_menu(application: &gtk::Application) {
 /// Show an about dialog
 pub fn show_about(window: &gtk::ApplicationWindow) {
     let dialog = gtk::AboutDialog::new();
-    dialog.set_authors(&["kodeaffe"]);
-    let licence = fs::read_to_string("LICENSE").unwrap();
+    dialog.set_authors(&["kodeaffe <lahi+kodeaffe@posteo.de>"]);
+    let licence_path = "LICENSE";
+    let licence = match fs::read_to_string(licence_path) {
+        Ok(licence) => licence,
+        Err(err) => {
+            show_error(window, &format!("{}: {}", err, licence_path));
+            return;
+        },
+    };
     dialog.set_comments(Some("This application will hopefully help in learning a language."));
     dialog.set_copyright(Some("All rights reversed"));
     dialog.set_license(Some(&licence));
@@ -113,4 +121,19 @@ pub fn show_about(window: &gtk::ApplicationWindow) {
     dialog.set_transient_for(Some(window));
     dialog.set_version(Some(VERSION));
     dialog.show_all();
+}
+
+
+/// Show an error dialog
+pub fn show_error(parent: &gtk::ApplicationWindow, message: &str) {
+    let dialog = gtk::MessageDialog::new(
+       Some(parent),
+       gtk::DialogFlags::DESTROY_WITH_PARENT,
+       gtk::MessageType::Error,
+       gtk::ButtonsType::Close,
+       message,
+    );
+    dialog.set_modal(true);
+    dialog.run();
+    dialog.close();
 }

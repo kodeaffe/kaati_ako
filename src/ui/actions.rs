@@ -19,7 +19,7 @@ pub fn action_next_card(window: &gtk::ApplicationWindow) {
                             match child.downcast::<gtk::Notebook>() {
                                 Ok(card) => {
                                     vbox.remove(&card);
-                                    let card = build_card();
+                                    let card = build_card(window);
                                     vbox.pack_start(&card, true, true, 10);
                                     vbox.show_all();
                                     card.grab_focus(); // Focus must be grabbed after being shown
