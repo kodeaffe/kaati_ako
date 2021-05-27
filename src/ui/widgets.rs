@@ -5,7 +5,8 @@ use std::fs;
 use glib;
 use gtk::{AboutDialogExt, ActionBarExt, BoxExt, ButtonExt, GtkApplicationExt, GtkWindowExt, WidgetExt, prelude::NotebookExtManual, LabelExt, DialogExt};
 
-use crate::util::database::{Card, get_connection};
+use crate::models::card::Card;
+use crate::database::get_connection;
 use crate::VERSION;
 use super::actions::{action_next_card};
 

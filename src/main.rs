@@ -17,11 +17,12 @@
 
 use gio::prelude::{ApplicationExt, ApplicationExtManual};
 
+mod database;
+mod models;
 mod ui;
-mod util;
 
 use ui::build;
-//use util::database::{Card, Translation, connect_database};
+//use database::{Card, Translation, connect_database};
 
 
 /// Default path to database file
