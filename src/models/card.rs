@@ -35,15 +35,18 @@ impl Card {
     pub fn add(
         conn: &sqlite::Connection,
         category_id: i64,
-        tongan: &str,
-        english: &str,
-        german: &str,
+        tongan_text: &str,
+        tongan_description: &str,
+        english_text: &str,
+        english_description: &str,
+        german_text: &str,
+        german_description: &str,
     ) -> Result<i64, DatabaseError> {
         //return Err(DatabaseError::SQLiteError("foo".to_string()));
         let card_id = Card::insert(conn, category_id)?;
-        Translation::insert(conn, card_id, 1, tongan, "")?;
-        Translation::insert(conn, card_id, 2, english, "")?;
-        Translation::insert(conn, card_id, 3, german, "")?;
+        Translation::insert(conn, card_id, 1, tongan_text, tongan_description)?;
+        Translation::insert(conn, card_id, 2, english_text, english_description)?;
+        Translation::insert(conn, card_id, 3, german_text, german_description)?;
         Ok(card_id)
     }
 

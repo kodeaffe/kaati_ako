@@ -215,18 +215,37 @@ pub fn show_add_card(parent: &gtk::ApplicationWindow) {
     let grid = gtk::Grid::new();
     grid.set_column_spacing(5);
     grid.set_row_spacing(10);
+
     let tongan_label = gtk::Label::new(Some("Tongan"));
+    tongan_label.set_halign(gtk::Align::Start);
     grid.attach(&tongan_label, 0, 0, 1, 1);
-    let tongan_entry = gtk::Entry::new();
-    grid.attach(&tongan_entry, 1, 0, 1, 1);
+    let tongan_text = gtk::Entry::new();
+    tongan_text.set_placeholder_text(Some("Add text ..."));
+    grid.attach(&tongan_text, 0, 1, 1, 1);
+    let tongan_description = gtk::Entry::new();
+    tongan_description.set_placeholder_text(Some("Add description ..."));
+    grid.attach(&tongan_description, 1, 1, 1, 1);
+
     let english_label = gtk::Label::new(Some("English"));
-    grid.attach(&english_label, 0, 1, 1, 1);
-    let english_entry = gtk::Entry::new();
-    grid.attach(&english_entry, 1, 1, 1, 1);
+    english_label.set_halign(gtk::Align::Start);
+    grid.attach(&english_label, 0, 2, 1, 1);
+    let english_text = gtk::Entry::new();
+    english_text.set_placeholder_text(Some("Add text ..."));
+    grid.attach(&english_text, 0, 3, 1, 1);
+    let english_description = gtk::Entry::new();
+    english_description.set_placeholder_text(Some("Add description ..."));
+    grid.attach(&english_description, 1, 3, 1, 1);
+
     let german_label = gtk::Label::new(Some("German"));
-    grid.attach(&german_label, 0, 2, 1, 1);
-    let german_entry = gtk::Entry::new();
-    grid.attach(&german_entry, 1, 2, 1, 1);
+    german_label.set_halign(gtk::Align::Start);
+    grid.attach(&german_label, 0, 4, 1, 1);
+    let german_text = gtk::Entry::new();
+    german_text.set_placeholder_text(Some("Add text ..."));
+    grid.attach(&german_text, 0, 5, 1, 1);
+    let german_description = gtk::Entry::new();
+    german_description.set_placeholder_text(Some("Add description ..."));
+    grid.attach(&german_description, 1, 5, 1, 1);
+
     content.pack_start(&grid, true, true, 10);
 
     let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
@@ -241,10 +260,23 @@ pub fn show_add_card(parent: &gtk::ApplicationWindow) {
                     return;
                 }
             };
-            let tongan = tongan_entry.get_buffer().get_text();
-            let english = english_entry.get_buffer().get_text();
-            let german = german_entry.get_buffer().get_text();
-            match Card::add(&conn, 1, &tongan, &english, &german) {
+            let tongan_text = tongan_text.get_buffer().get_text();
+            let tongan_description = tongan_description.get_buffer().get_text();
+            let english_text = english_text.get_buffer().get_text();
+            let english_description = english_description.get_buffer().get_text();
+            let german_text = german_text.get_buffer().get_text();
+            let german_description = german_description.get_buffer().get_text();
+            let result = Card::add(
+                &conn,
+                1,
+                &tongan_text,
+                &tongan_description,
+                &english_text,
+                &english_description,
+                &german_text,
+                &german_description,
+            );
+            match result {
                 Ok(card_id) => replace_card(&parent, card_id),
                 Err(err) => show_error(&parent, &err.to_string())
             }
