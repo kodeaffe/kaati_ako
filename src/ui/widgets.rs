@@ -5,7 +5,7 @@ use std::fs;
 use glib;
 use gtk::{AboutDialogExt, ActionBarExt, BoxExt, ButtonExt, GtkApplicationExt, GtkWindowExt, WidgetExt, prelude::NotebookExtManual, LabelExt, DialogExt};
 
-use crate::util::database::Card;
+use crate::util::database::{Card, get_connection};
 use crate::VERSION;
 use super::actions::{action_next_card};
 
@@ -18,7 +18,18 @@ pub const WIDGET_NAME_CARD: &str = "card";
 
 /// Build a flash card as Notebook widget
 pub fn build_card(window: &gtk::ApplicationWindow) -> gtk::Notebook {
-    let card = match Card::get_random() {
+    let notebook = gtk::Notebook::new();
+    notebook.set_widget_name(WIDGET_NAME_CARD);
+    notebook.grab_focus();
+
+    let conn = match get_connection() {
+        Ok(conn) => conn,
+        Err(err) => {
+            show_error(window, &err.to_string());
+            return notebook;
+        }
+    };
+    let card = match Card::get_random(&conn) {
         Ok(card) => card,
         Err(err) => {
             show_error(window, &err.to_string());
@@ -27,9 +38,6 @@ pub fn build_card(window: &gtk::ApplicationWindow) -> gtk::Notebook {
     };
 
     let padding = 10;
-    let notebook = gtk::Notebook::new();
-    notebook.set_widget_name(WIDGET_NAME_CARD);
-    notebook.grab_focus();
     for translation in card.translations {
         let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         page.set_homogeneous(false);

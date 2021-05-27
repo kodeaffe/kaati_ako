@@ -1,25 +1,33 @@
 //! Handle the database
 
+use std::env;
 use std::error::Error;
 use std::fmt;
+use std::path;
 
 use sqlite;
 
-use crate::DB_CONNECTION;
+use crate::DEFAULT_DB_PATH;
 
 
 /// An custom error which can occur during access to the database
 #[derive(Debug)]
 pub enum DatabaseError {
-    ValueNotInteger,
-    ValueNotString,
-    NoConnection,
+    /// A file could not be found, the filename should be in the string
+    FileNotFound(String),
+    /// An error within SQLite occurred, the error message should be in the string
     SQLiteError(String),
+    /// The value returned by the database is not the expected integer
+    ValueNotInteger,
+    /// The value returned by the database is not the expected string
+    ValueNotString,
 }
 
+/// The implementation of the Error trait is empty
 impl Error for DatabaseError {}
 
 
+/// Implement the From trait to convert a sqlite::Error to a DatabaseError
 impl From<sqlite::Error> for DatabaseError {
     fn from(err: sqlite::Error) -> Self {
         DatabaseError::SQLiteError(err.to_string())
@@ -27,17 +35,18 @@ impl From<sqlite::Error> for DatabaseError {
 }
 
 
+/// Implement the Display trait to show a DatabaseError
 impl fmt::Display for DatabaseError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
       let prefix = "DatabaseError";
       match self {
+          DatabaseError::FileNotFound(db_path) =>
+              write!(f, "{}: File not found: {}!", prefix, db_path),
+          DatabaseError::SQLiteError(msg) =>
+              write!(f, "{}: SQLite error: {}!", prefix, msg),
           DatabaseError::ValueNotInteger => write!(f, "{}: Value not an integer!", prefix),
           DatabaseError::ValueNotString =>
               write!(f, "{}: Value not a string!", prefix),
-          DatabaseError::NoConnection =>
-              write!(f, "{}: No database connection!", prefix),
-          DatabaseError::SQLiteError(msg) =>
-              write!(f, "{}: SQLite error: {}!", prefix, msg),
       }
   }
 }
@@ -212,42 +221,35 @@ impl Card {
     }
 
     /// Select a random flash card with translations
-    pub fn get_random() -> Result<Card, DatabaseError> {
-        DB_CONNECTION.with(|cell| {
-            match cell.borrow().as_ref() {
-                Some(conn) => {
-                    let statement = "
-                        SELECT card.id, category.id, category.name
-                        FROM card
-                        LEFT JOIN category ON card.category_id = category.id
-                        ORDER BY RANDOM()
-                        LIMIT 1
-                    ";
-                    let mut cursor = conn.prepare(statement)?.cursor();
-                    while let Some(row) = cursor.next()? {
-                        let card_id = match row[0].as_integer() {
-                            Some(id) => id,
-                            None => { return Err(DatabaseError::ValueNotInteger); },
-                        };
-                        let category_id = match row[1].as_integer() {
-                            Some(id) => id,
-                            None => { return Err(DatabaseError::ValueNotInteger); },
-                        };
-                        let category_name = match row[2].as_string() {
-                            Some(name) => name,
-                            None => { return Err(DatabaseError::ValueNotString); },
-                        };
-                        return Ok(Card {
-                            id: card_id,
-                            category: Category { id: category_id, name: category_name.to_string() },
-                            translations: Translation::get_all(&conn, card_id)?,
-                        });
-                    }
-                    return Ok(Card::get_empty());
-                },
-                None => { return Err(DatabaseError::NoConnection); },
+    pub fn get_random(conn: &sqlite::Connection) -> Result<Card, DatabaseError> {
+        let statement = "
+            SELECT card.id, category.id, category.name
+            FROM card
+            LEFT JOIN category ON card.category_id = category.id
+            ORDER BY RANDOM()
+            LIMIT 1
+        ";
+        let mut cursor = conn.prepare(statement)?.cursor();
+        while let Some(row) = cursor.next()? {
+            let card_id = match row[0].as_integer() {
+                Some(id) => id,
+                None => { return Err(DatabaseError::ValueNotInteger); },
             };
-        })
+            let category_id = match row[1].as_integer() {
+                Some(id) => id,
+                None => { return Err(DatabaseError::ValueNotInteger); },
+            };
+            let category_name = match row[2].as_string() {
+                Some(name) => name,
+                None => { return Err(DatabaseError::ValueNotString); },
+            };
+            return Ok(Card {
+                id: card_id,
+                category: Category { id: category_id, name: category_name.to_string() },
+                translations: Translation::get_all(&conn, card_id)?,
+            });
+        }
+        Ok(Card::get_empty())
     }
 }
 
@@ -305,6 +307,18 @@ pub fn create_database(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
     //println!("cards: {:?}", Card::get_all(&conn);
     Ok(result)
 }
+
+
+/// Get a database connection using a DB path from the environment
+pub fn get_connection() -> Result<sqlite::Connection, DatabaseError> {
+    let db_path = env::var("DB_PATH").unwrap_or(DEFAULT_DB_PATH.to_string());
+    if !path::Path::new(&db_path).exists() {
+        return Err(DatabaseError::FileNotFound(db_path));
+    }
+    let conn = sqlite::open(db_path)?;
+    Ok(conn)
+}
+
 
 /// Get the identifier of the last inserted item in the given table
 #[allow(dead_code)]
