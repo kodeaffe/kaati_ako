@@ -1,4 +1,12 @@
 //! Handle the database
+//!
+//! # Example
+//!
+//! ```rust
+//! use database::{get_connection, initialise};
+//! let conn = get_connection()?;
+//! initialise(conn);
+//! ```
 
 use std::env;
 use std::error::Error;
@@ -21,6 +29,8 @@ pub enum DatabaseError {
     ValueNotInteger,
     /// The value returned by the database is not the expected string
     ValueNotString,
+    /// Is an unexpected error occurs
+    Unexpected,
 }
 
 /// The implementation of the Error trait is empty
@@ -45,66 +55,10 @@ impl fmt::Display for DatabaseError {
           DatabaseError::SQLiteError(msg) =>
               write!(f, "{}: SQLite error: {}!", prefix, msg),
           DatabaseError::ValueNotInteger => write!(f, "{}: Value not an integer!", prefix),
-          DatabaseError::ValueNotString =>
-              write!(f, "{}: Value not a string!", prefix),
+          DatabaseError::ValueNotString => write!(f, "{}: Value not a string!", prefix),
+          DatabaseError::Unexpected => write!(f, "{}: Something unexpected happened!", prefix),
       }
   }
-}
-
-
-/// Create a new database from scratch, including some fixture data
-#[allow(dead_code)]
-pub fn create_database(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
-    let result = conn.execute("
-        DROP TABLE IF EXISTS category;
-        CREATE TABLE category (
-            id INTEGER NOT NULL PRIMARY KEY,
-            name TEXT
-        );
-        INSERT INTO category (name) VALUES ('default');
-
-        DROP TABLE IF EXISTS card;
-        CREATE TABLE card (
-            id INTEGER NOT NULL PRIMARY KEY,
-            category_id INTEGER,
-            FOREIGN KEY (category_id) REFERENCES category (id)
-        );
-        INSERT INTO card (category_id) VALUES (1);
-        INSERT INTO card (category_id) VALUES (1);
-        INSERT INTO card (category_id) VALUES (1);
-
-        DROP TABLE IF EXISTS language;
-        CREATE TABLE language (
-            id INTEGER NOT NULL PRIMARY KEY,
-            code TEXT,
-            name TEXT
-        );
-        INSERT INTO language (code, name) VALUES ('to', 'Tongan');
-        INSERT INTO language (code, name) VALUES ('en', 'English');
-        INSERT INTO language (code, name) VALUES ('de', 'German');
-
-        DROP TABLE IF EXISTS translation;
-        CREATE TABLE translation (
-            id INTEGER NOT NULL PRIMARY KEY,
-            card_id INTEGER,
-            language_id INTEGER,
-            text TEXT,
-            description TEXT,
-            FOREIGN KEY (card_id) REFERENCES card (id),
-            FOREIGN KEY (language_id) REFERENCES language (id)
-        );
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (1, 1, 'kaati', '');
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (1, 2, 'card', 'A card as in flash card or birthday card');
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (1, 3, 'Karte', 'Eine Karte wie in Karteikarte oder Geburtstagskarte');
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (2, 1, 'ako', '');
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (2, 2, 'learn', 'Learn a language');
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (2, 3, 'lernen', 'Eine Sprache lernen');
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (3, 1, 'lea faka', '');
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (3, 2, 'language', 'Learn a language');
-        INSERT INTO translation (card_id, language_id, text, description) VALUES (3, 3, 'Sprache', 'Eine Sprache lernen');
-        ")?;
-    //println!("cards: {:?}", Card::get_all(&conn);
-    Ok(result)
 }
 
 
@@ -119,8 +73,75 @@ pub fn get_connection() -> Result<sqlite::Connection, DatabaseError> {
 }
 
 
-/// Get the identifier of the last inserted item in the given table
+/// Create a new database from scratch, including some fixture data
 #[allow(dead_code)]
+pub fn initialise(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
+    init_schema(conn)?;
+    init_fixtures(conn)?;
+    Ok(())
+}
+
+
+/// Initialise the database fixtures
+fn init_fixtures(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
+    let result = conn.execute("
+        INSERT INTO language (code, name) VALUES ('to', 'Tongan');
+        INSERT INTO language (code, name) VALUES ('en', 'English');
+        INSERT INTO language (code, name) VALUES ('de', 'German');
+        INSERT INTO category (name) VALUES ('default');
+        INSERT INTO card (category_id) VALUES (1);
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (1, 1, 'kaati', '');
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (1, 2, 'card', 'A card as in flash card or birthday card');
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (1, 3, 'Karte', 'Eine Karte wie in Karteikarte oder Geburtstagskarte');
+        INSERT INTO card (category_id) VALUES (1);
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (2, 1, 'ako', '');
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (2, 2, 'learn', 'Learn a language');
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (2, 3, 'lernen', 'Eine Sprache lernen');
+        INSERT INTO card (category_id) VALUES (1);
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (3, 1, 'lea faka', '');
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (3, 2, 'language', 'Learn a language');
+        INSERT INTO translation (card_id, language_id, text, description) VALUES (3, 3, 'Sprache', 'Eine Sprache lernen');
+        ")?;
+    Ok(result)
+}
+
+
+/// Initialise the database schema
+fn init_schema(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
+    let result = conn.execute("
+        DROP TABLE IF EXISTS category;
+        CREATE TABLE category (
+            id INTEGER NOT NULL PRIMARY KEY,
+            name TEXT
+        );
+        DROP TABLE IF EXISTS card;
+        CREATE TABLE card (
+            id INTEGER NOT NULL PRIMARY KEY,
+            category_id INTEGER,
+            FOREIGN KEY (category_id) REFERENCES category (id)
+        );
+        DROP TABLE IF EXISTS language;
+        CREATE TABLE language (
+            id INTEGER NOT NULL PRIMARY KEY,
+            code TEXT,
+            name TEXT
+        );
+        DROP TABLE IF EXISTS translation;
+        CREATE TABLE translation (
+            id INTEGER NOT NULL PRIMARY KEY,
+            card_id INTEGER,
+            language_id INTEGER,
+            text TEXT,
+            description TEXT,
+            FOREIGN KEY (card_id) REFERENCES card (id),
+            FOREIGN KEY (language_id) REFERENCES language (id)
+        );
+    ")?;
+    Ok(result)
+}
+
+
+/// Get the identifier of the last inserted item in the given table
 pub fn last_insert_id(conn: &sqlite::Connection, table_name: &str) -> Result<i64, DatabaseError> {
     // Cannot prepare `SELECT last_insert_rowid() FROM ?` ... Bug?
     let statement = format!("SELECT last_insert_rowid() FROM {}", table_name);

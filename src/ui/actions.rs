@@ -1,40 +1,9 @@
 //! Handle application actions
 
 use gio::ActionMapExt;
-use glib::Cast;
-use gtk::{BoxExt, ContainerExt, GtkWindowExt, WidgetExt};
+use gtk::GtkWindowExt;
 
-use super::widgets::{WIDGET_NAME_CARD, WIDGET_NAME_CONTENT, build_card, show_about};
-
-
-/// Action to deal the next flash card
-pub fn action_next_card(window: &gtk::ApplicationWindow) {
-    // TODO: Is there a better way to find the box and card?
-    for widget in window.get_children() {
-        if widget.get_widget_name() == WIDGET_NAME_CONTENT {
-            match widget.downcast::<gtk::Box>() {
-                Ok(vbox) => {
-                    for child in vbox.get_children() {
-                        if child.get_widget_name() == WIDGET_NAME_CARD {
-                            match child.downcast::<gtk::Notebook>() {
-                                Ok(card) => {
-                                    vbox.remove(&card);
-                                    let card = build_card(window);
-                                    vbox.pack_start(&card, true, true, 10);
-                                    vbox.show_all();
-                                    card.grab_focus(); // Focus must be grabbed after being shown
-                                    return;
-                                },
-                                _ => {},
-                            }
-                        }
-                    }
-                },
-                _ => {},
-            }
-        }
-    }
-}
+use super::widgets::{replace_card, show_about, show_add_card};
 
 
 /// Add actions for the application
@@ -51,9 +20,15 @@ pub fn add_actions(application: &gtk::Application, window: &gtk::ApplicationWind
     }));
     application.add_action(&about);
 
+    let add_card = gio::SimpleAction::new("add_card", None);
+    add_card.connect_activate(glib::clone!(@weak window => move |_, _| {
+        show_add_card(&window);
+    }));
+    application.add_action(&add_card);
+
     let next_card = gio::SimpleAction::new("next_card", None);
     next_card.connect_activate(glib::clone!(@weak window => move |_, _| {
-        action_next_card(&window);
+        replace_card(&window, 0);
     }));
     application.add_action(&next_card);
 }

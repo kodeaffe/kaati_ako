@@ -22,7 +22,6 @@ mod models;
 mod ui;
 
 use ui::build;
-//use database::{Card, Translation, connect_database};
 
 
 /// Default path to database file
@@ -34,15 +33,6 @@ const VERSION: &str = "0.1.0";
 
 /// Build the application and run it
 fn main() {
-    /*
-    let conn = connect_database();
-    let card_id = Card::add(&conn, 1);
-    Translation::add(&conn, card_id, 1, "lahi", "");
-    Translation::add(&conn, card_id, 2, "large", "Large or big");
-    Translation::add(&conn, card_id, 3, "gross", "Ein grosser Schrank");
-    //create_database(&conn);
-     */
-
     let application = gtk::Application::new(
         Some("com.github.kodeaffe.kaati_ako"), Default::default()).unwrap();
     application.connect_activate(|app| {

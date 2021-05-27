@@ -22,28 +22,6 @@ pub struct Translation {
 
 #[allow(dead_code)]
 impl Translation {
-    /// Insert a translation in a given language for a given card
-    pub fn add(
-        conn: &sqlite::Connection,
-        card_id: i64,
-        language_id: i64,
-        text: &str,
-        description: &str,
-    ) -> Result<i64, DatabaseError> {
-        let statement = "
-            INSERT INTO translation (card_id, language_id, text, description) VALUES (?, ?, ?, ?)
-        ";
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[
-            sqlite::Value::Integer(card_id),
-            sqlite::Value::Integer(language_id),
-            sqlite::Value::String(text.to_string()),
-            sqlite::Value::String(description.to_string()),
-        ])?;
-        cursor.next()?;
-        last_insert_id(conn, "translation")
-    }
-
     /// Select all translations for a given card
     pub fn get_all(
         conn: &sqlite::Connection,
@@ -87,5 +65,27 @@ impl Translation {
             translations.push(Translation { id, language, text, description });
         }
         Ok(translations)
+    }
+
+    /// Insert a translation in a given language for a given card
+    pub fn insert(
+        conn: &sqlite::Connection,
+        card_id: i64,
+        language_id: i64,
+        text: &str,
+        description: &str,
+    ) -> Result<i64, DatabaseError> {
+        let statement = "
+            INSERT INTO translation (card_id, language_id, text, description) VALUES (?, ?, ?, ?)
+        ";
+        let mut cursor = conn.prepare(statement)?.cursor();
+        cursor.bind(&[
+            sqlite::Value::Integer(card_id),
+            sqlite::Value::Integer(language_id),
+            sqlite::Value::String(text.to_string()),
+            sqlite::Value::String(description.to_string()),
+        ])?;
+        cursor.next()?;
+        last_insert_id(conn, "translation")
     }
 }
