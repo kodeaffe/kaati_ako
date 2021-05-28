@@ -19,7 +19,6 @@ pub struct Card {
 }
 
 
-#[allow(dead_code)]
 impl Card {
     /// Default select statement to query (a) card
     const STATEMENT_SELECT: &'static str = "
@@ -31,30 +30,11 @@ impl Card {
     /// Table name for cards
     const TABLE_NAME: &'static str = "card";
 
-    /// Add a new card to the database
-    pub fn add(
-        conn: &sqlite::Connection,
-        category_id: i64,
-        tongan_text: &str,
-        tongan_description: &str,
-        english_text: &str,
-        english_description: &str,
-        german_text: &str,
-        german_description: &str,
-    ) -> Result<i64, DatabaseError> {
-        //return Err(DatabaseError::SQLiteError("foo".to_string()));
-        let card_id = Card::insert(conn, category_id)?;
-        Translation::insert(conn, card_id, 1, tongan_text, tongan_description)?;
-        Translation::insert(conn, card_id, 2, english_text, english_description)?;
-        Translation::insert(conn, card_id, 3, german_text, german_description)?;
-        Ok(card_id)
-    }
-
     /// Instantiate an empty card
     pub fn from_empty() -> Card {
         Card {
             id: 0,
-            category: Category { id: 0, name: "".to_string() },
+            category: Category::from_empty(),
             translations: Vec::new(),
         }
     }
@@ -76,14 +56,14 @@ impl Card {
         let card = Card {
             id: card_id,
             category: Category { id: category_id, name: category_name },
-            translations: Translation::get_all(conn, card_id)?,
+            translations: Translation::load_for_card(conn, card_id)?,
         };
         Ok(card)
     }
 
-    /// Select all flash cards with translations
+    /// Load all flash cards with translations from database
     #[allow(dead_code)]
-    pub fn get_all(conn: &sqlite::Connection) -> Result<Vec<Card>, DatabaseError> {
+    pub fn load_all(conn: &sqlite::Connection) -> Result<Vec<Card>, DatabaseError> {
         let statement = format!("{} ORDER BY card.id", Card::STATEMENT_SELECT);
         let mut cursor = conn.prepare(statement)?.cursor();
         let mut cards = Vec::new();
@@ -94,8 +74,8 @@ impl Card {
         Ok(cards)
     }
 
-    /// Select a card with translations by given identifier
-    pub fn get(conn: &sqlite::Connection, id: i64) -> Result<Card, DatabaseError> {
+    /// Load a card with translations by given identifier from database
+    pub fn load(conn: &sqlite::Connection, id: i64) -> Result<Card, DatabaseError> {
         let statement = format!("{} WHERE card.id = ?", Card::STATEMENT_SELECT);
         let mut cursor = conn.prepare(statement)?.cursor();
         cursor.bind(&[sqlite::Value::Integer(id)])?;
@@ -106,19 +86,10 @@ impl Card {
         Ok(Card::from_empty())
     }
 
-    /// Insert a card for given category into the database; used internally
-    fn insert(conn: &sqlite::Connection, category_id: i64) -> Result<i64, DatabaseError> {
-        let statement = "INSERT INTO card (category_id) VALUES (?)";
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[sqlite::Value::Integer(category_id)])?;
-        cursor.next()?;
-        last_insert_id(conn, Card::TABLE_NAME)
-    }
-
     /// Get the id of a random card
     pub fn random_id(conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
         let statement = format!(
-            "SELECT card.id from {} ORDER BY RANDOM() LIMIT 1", Card::TABLE_NAME);
+            "SELECT id from {} ORDER BY RANDOM() LIMIT 1", Card::TABLE_NAME);
         let mut cursor = conn.prepare(statement)?.cursor();
         while let Some(row) = cursor.next()? {
             return match row[0].as_integer() {
@@ -127,5 +98,25 @@ impl Card {
             }
         }
         Err(DatabaseError::Unexpected)
+    }
+
+    /// Instantiate a new card for given category
+    pub fn new(category: Category) -> Card {
+        let mut card = Card::from_empty();
+        card.category = category;
+        card
+    }
+
+    /// Save the card to the database and set the id
+    pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        let statement = "INSERT INTO card (category_id) VALUES (?)";
+        let mut cursor = conn.prepare(statement)?.cursor();
+        cursor.bind(&[sqlite::Value::Integer(self.category.id)])?;
+        cursor.next()?;
+        self.id = last_insert_id(conn, Card::TABLE_NAME)?;
+        for translation in &mut self.translations {
+            translation.save(conn, self.id)?;
+        }
+        Ok(self.id)
     }
 }

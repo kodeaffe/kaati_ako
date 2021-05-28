@@ -1,4 +1,3 @@
-- Improve interface between widgets and models/database - a bit more like Django?
 - Improve card editor: enable edit and delete
 - Make UI translatable (gettext-rs?)
 - Add tests

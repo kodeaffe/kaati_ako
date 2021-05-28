@@ -22,8 +22,18 @@ pub struct Translation {
 
 #[allow(dead_code)]
 impl Translation {
-    /// Select all translations for a given card
-    pub fn get_all(
+    /// Instantiate an empty translation
+    pub fn from_empty() -> Translation {
+        Translation {
+            id: 0,
+            language: Language::from_empty(),
+            text: "".to_string(),
+            description: "".to_string(),
+        }
+    }
+
+    /// Load all translations for a given card from the database
+    pub fn load_for_card(
         conn: &sqlite::Connection,
         card_id: i64,
     ) -> Result<Vec<Translation>, DatabaseError> {
@@ -31,7 +41,7 @@ impl Translation {
             SELECT translation.id, language.id, language.code, language.name, text, description
             FROM translation
             LEFT JOIN language ON translation.language_id = language.id
-            WHERE card_id = ?
+            WHERE translation.card_id = ?
         ";
         let mut cursor = conn.prepare(statement)?.cursor();
         cursor.bind(&[sqlite::Value::Integer(card_id)])?;
@@ -67,25 +77,25 @@ impl Translation {
         Ok(translations)
     }
 
-    /// Insert a translation in a given language for a given card
-    pub fn insert(
-        conn: &sqlite::Connection,
-        card_id: i64,
-        language_id: i64,
-        text: &str,
-        description: &str,
-    ) -> Result<i64, DatabaseError> {
+    /// Instantiate a new translation for given language, text and description
+    pub fn new(language: Language, text: String, description: String) -> Translation {
+        Translation { id: 0, language, text, description }
+    }
+
+    /// Save a translation for a given card to the database
+    pub fn save(&mut self, conn: &sqlite::Connection, card_id: i64) -> Result<i64, DatabaseError> {
         let statement = "
             INSERT INTO translation (card_id, language_id, text, description) VALUES (?, ?, ?, ?)
         ";
         let mut cursor = conn.prepare(statement)?.cursor();
         cursor.bind(&[
             sqlite::Value::Integer(card_id),
-            sqlite::Value::Integer(language_id),
-            sqlite::Value::String(text.to_string()),
-            sqlite::Value::String(description.to_string()),
+            sqlite::Value::Integer(self.language.id),
+            sqlite::Value::String(self.text.clone()),
+            sqlite::Value::String(self.description.clone()),
         ])?;
         cursor.next()?;
-        last_insert_id(conn, "translation")
+        self.id = last_insert_id(conn, "translation")?;
+        Ok(self.id)
     }
 }

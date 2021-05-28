@@ -21,6 +21,9 @@ use gtk::{
 };
 
 use crate::models::card::Card;
+use crate::models::category::Category;
+use crate::models::language::Language;
+use crate::models::translation::Translation;
 use crate::database::get_connection;
 use crate::VERSION;
 
@@ -69,7 +72,7 @@ pub fn build_card(window: &gtk::ApplicationWindow, card_id: i64) -> gtk::Noteboo
             }
         }
     }
-    let card = match Card::get(&conn, id) {
+    let card = match Card::load(&conn, id) {
         Ok(card) => card,
         Err(err) => {
             show_error(window, &err.to_string());
@@ -216,36 +219,36 @@ pub fn show_add_card(parent: &gtk::ApplicationWindow) {
     grid.set_column_spacing(5);
     grid.set_row_spacing(10);
 
-    let tongan_label = gtk::Label::new(Some("Tongan"));
-    tongan_label.set_halign(gtk::Align::Start);
-    grid.attach(&tongan_label, 0, 0, 1, 1);
-    let tongan_text = gtk::Entry::new();
-    tongan_text.set_placeholder_text(Some("Add text ..."));
-    grid.attach(&tongan_text, 0, 1, 1, 1);
-    let tongan_description = gtk::Entry::new();
-    tongan_description.set_placeholder_text(Some("Add description ..."));
-    grid.attach(&tongan_description, 1, 1, 1, 1);
-
-    let english_label = gtk::Label::new(Some("English"));
-    english_label.set_halign(gtk::Align::Start);
-    grid.attach(&english_label, 0, 2, 1, 1);
-    let english_text = gtk::Entry::new();
-    english_text.set_placeholder_text(Some("Add text ..."));
-    grid.attach(&english_text, 0, 3, 1, 1);
-    let english_description = gtk::Entry::new();
-    english_description.set_placeholder_text(Some("Add description ..."));
-    grid.attach(&english_description, 1, 3, 1, 1);
-
-    let german_label = gtk::Label::new(Some("German"));
-    german_label.set_halign(gtk::Align::Start);
-    grid.attach(&german_label, 0, 4, 1, 1);
-    let german_text = gtk::Entry::new();
-    german_text.set_placeholder_text(Some("Add text ..."));
-    grid.attach(&german_text, 0, 5, 1, 1);
-    let german_description = gtk::Entry::new();
-    german_description.set_placeholder_text(Some("Add description ..."));
-    grid.attach(&german_description, 1, 5, 1, 1);
-
+    let conn = match get_connection() {
+        Ok(conn) => conn,
+        Err(err) => {
+            show_error(&parent, &err.to_string());
+            return;
+        }
+    };
+    let languages = match Language::load_all(&conn) {
+        Ok(languages) => languages,
+        Err(err) => {
+            show_error(parent, &err.to_string());
+            return;
+        }
+    };
+    for language in &languages {
+        let label = gtk::Label::new(Some(&language.name));
+        label.set_halign(gtk::Align::Start);
+        // Map language id to top: 1 -> 0, 1 ; 2 -> 2, 3 ; 3 -> 4, 5
+        let mut top = language.id as i32 * 2 - 2 ;
+        grid.attach(&label, 0, top, 1, 1);
+        let text = gtk::Entry::new();
+        text.set_placeholder_text(Some("Add text ..."));
+        text.set_widget_name(&format!("text_{}", language.id));
+        top += 1;
+        grid.attach(&text, 0, top, 1, 1);
+        let description = gtk::Entry::new();
+        description.set_placeholder_text(Some("Add description ..."));
+        description.set_widget_name(&format!("description_{}", language.id));
+        grid.attach(&description, 1, top, 1, 1);
+    }
     content.pack_start(&grid, true, true, 10);
 
     let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
@@ -253,30 +256,40 @@ pub fn show_add_card(parent: &gtk::ApplicationWindow) {
 
     dialog.connect_response(glib::clone!(@weak parent => move |_, response_type| {
         if response_type == gtk::ResponseType::Accept {
-            let conn = match get_connection() {
-                Ok(conn) => conn,
+            // TODO: Get category id from user
+            let category = match Category::load(&conn, 1) {
+                Ok(category) => category,
                 Err(err) => {
                     show_error(&parent, &err.to_string());
                     return;
                 }
             };
-            let tongan_text = tongan_text.get_buffer().get_text();
-            let tongan_description = tongan_description.get_buffer().get_text();
-            let english_text = english_text.get_buffer().get_text();
-            let english_description = english_description.get_buffer().get_text();
-            let german_text = german_text.get_buffer().get_text();
-            let german_description = german_description.get_buffer().get_text();
-            let result = Card::add(
-                &conn,
-                1,
-                &tongan_text,
-                &tongan_description,
-                &english_text,
-                &english_description,
-                &german_text,
-                &german_description,
-            );
-            match result {
+            let mut card = Card::new(category);
+            for language in &languages {
+                let mut text = String::new();
+                let name_text = format!("text_{}", language.id);
+                let mut description = String::new();
+                let name_description = format!("description_{}", language.id);
+                // FIXME: Better way to get the widget?
+                for child in grid.get_children() {
+                    let widget_name = child.get_widget_name();
+                    if widget_name == name_text {
+                        text = match child.downcast::<gtk::Entry>() {
+                            Ok(entry) => entry.get_buffer().get_text(),
+                            _ => "".to_string()
+                        };
+                    } else if widget_name == name_description {
+                        description = match child.downcast::<gtk::Entry>() {
+                            Ok(entry) => entry.get_buffer().get_text(),
+                            _ => "".to_string()
+                        };
+                    }
+                }
+                let translation = Translation::new(
+                    language.clone(), text.clone(), description.clone());
+                card.translations.push(translation);
+            }
+            match card.save(&conn) {
                 Ok(card_id) => replace_card(&parent, card_id),
                 Err(err) => show_error(&parent, &err.to_string())
             }
