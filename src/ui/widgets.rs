@@ -20,6 +20,7 @@ use gtk::{
     prelude::NotebookExtManual,
 };
 
+use crate::models::Model;
 use crate::models::card::Card;
 use crate::models::category::Category;
 use crate::models::language::Language;
@@ -79,9 +80,23 @@ pub fn build_card(window: &gtk::ApplicationWindow, card_id: i64) -> gtk::Noteboo
             Card::from_empty()
         }
     };
+    let category = match Category::load(&conn, card.category_id) {
+        Ok(category) => category,
+        Err(err) => {
+            show_error(window, &err.to_string());
+            return notebook;
+        }
+    };
+    let translations = match Translation::load_for_card(&conn, card.id) {
+        Ok(translations) => translations,
+        Err(err) => {
+            show_error(window, &err.to_string());
+            return notebook;
+        }
+    };
 
     let padding = 10;
-    for translation in card.translations {
+    for translation in translations {
         let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         page.set_homogeneous(false);
 
@@ -97,12 +112,19 @@ pub fn build_card(window: &gtk::ApplicationWindow, card_id: i64) -> gtk::Noteboo
             let description = gtk::Label::new(Some(&translation.description));
             page_bottom.pack_start(&description, false, false, padding);
         }
-        let category = gtk::Label::new(Some(""));
-        category.set_markup(&format!("Category: <b>{}</b>", card.category.name));
-        page_bottom.pack_end(&category, false, false, padding);
+        let category_label = gtk::Label::new(Some(""));
+        category_label.set_markup(&format!("Category: <b>{}</b>", category.name));
+        page_bottom.pack_end(&category_label, false, false, padding);
         page.pack_start(&page_bottom, false, false, padding);
 
-        let tab_label = gtk::Label::new(Some(&translation.language.name));
+        let language = match Language::load(&conn, translation.language_id) {
+            Ok(language) => language,
+            Err(err) => {
+                show_error(window, &err.to_string());
+                return notebook;
+            }
+        };
+        let tab_label = gtk::Label::new(Some(&language.name));
         notebook.append_page(&page, Some(&tab_label));
     }
     notebook
@@ -264,7 +286,14 @@ pub fn show_add_card(parent: &gtk::ApplicationWindow) {
                     return;
                 }
             };
-            let mut card = Card::new(category);
+            let mut card = Card::new(category.id);
+            match card.save(&conn) {
+                Err(err) => {
+                    show_error(&parent, &err.to_string());
+                    return;
+                },
+                _ => (),
+            }
             for language in &languages {
                 let mut text = String::new();
                 let name_text = format!("text_{}", language.id);
@@ -285,14 +314,17 @@ pub fn show_add_card(parent: &gtk::ApplicationWindow) {
                         };
                     }
                 }
-                let translation = Translation::new(
-                    language.clone(), text.clone(), description.clone());
-                card.translations.push(translation);
+                let mut translation = Translation::new(
+                    card.id, language.id, text.clone(), description.clone());
+                match translation.save(&conn) {
+                    Err(err) => {
+                        show_error(&parent, &err.to_string());
+                        return;
+                    },
+                    _ => (),
+                }
             }
-            match card.save(&conn) {
-                Ok(card_id) => replace_card(&parent, card_id),
-                Err(err) => show_error(&parent, &err.to_string())
-            }
+            replace_card(&parent, card.id);
         }
     }));
 

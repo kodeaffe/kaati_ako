@@ -2,8 +2,8 @@
 
 use sqlite;
 
-use super::language::Language;
 use crate::database::{DatabaseError, last_insert_id};
+use super::Model;
 
 
 /// A flash card's translation
@@ -11,8 +11,10 @@ use crate::database::{DatabaseError, last_insert_id};
 pub struct Translation {
     /// Identifier of the translation
     pub id: i64,
+    /// Card the translation belongs to
+    pub card_id: i64,
     /// Language the translation is made in
-    pub language: Language,
+    pub language_id: i64,
     /// The value of the translation
     pub text: String,
     /// An optional description with examples or further explanations
@@ -20,82 +22,116 @@ pub struct Translation {
 }
 
 
-#[allow(dead_code)]
 impl Translation {
-    /// Instantiate an empty translation
-    pub fn from_empty() -> Translation {
-        Translation {
-            id: 0,
-            language: Language::from_empty(),
-            text: "".to_string(),
-            description: "".to_string(),
-        }
-    }
-
     /// Load all translations for a given card from the database
     pub fn load_for_card(
         conn: &sqlite::Connection,
         card_id: i64,
     ) -> Result<Vec<Translation>, DatabaseError> {
-        let statement = "
-            SELECT translation.id, language.id, language.code, language.name, text, description
-            FROM translation
-            LEFT JOIN language ON translation.language_id = language.id
-            WHERE translation.card_id = ?
-        ";
+        let statement = format!(
+            "SELECT id FROM {} WHERE card_id = ?", Translation::TABLE_NAME);
         let mut cursor = conn.prepare(statement)?.cursor();
         cursor.bind(&[sqlite::Value::Integer(card_id)])?;
         let mut translations = Vec::new();
         while let Some(row) = cursor.next()? {
-            let language_id = match row[1].as_integer() {
+            let id = match row[0].as_integer() {
                 Some(id) => id,
                 None => { return Err(DatabaseError::ValueNotInteger); },
             };
-            let language_code = match row[2].as_string() {
-                Some(code) => code.to_string(),
-                None => { return Err(DatabaseError::ValueNotString); },
-            };
-            let language_name = match row[3].as_string() {
-                Some(name) => name.to_string(),
-                None => { return Err(DatabaseError::ValueNotString); },
-            };
-            let language = Language { id: language_id, code: language_code, name: language_name };
-            let id = match row[1].as_integer() {
-                Some(id) => id,
-                None => { return Err(DatabaseError::ValueNotInteger); },
-            };
-            let text = match row[4].as_string() {
-                Some(text) => text.to_string(),
-                None => { return Err(DatabaseError::ValueNotString); },
-            };
-            let description = match row[5].as_string() {
-                Some(description) => description.to_string(),
-                None => { return Err(DatabaseError::ValueNotString); },
-            };
-            translations.push(Translation { id, language, text, description });
+            translations.push(Translation::load(conn, id)?);
         }
         Ok(translations)
     }
 
-    /// Instantiate a new translation for given language, text and description
-    pub fn new(language: Language, text: String, description: String) -> Translation {
-        Translation { id: 0, language, text, description }
+    /// Instantiate a new Translation for given card, language, text and description
+    pub fn new(card_id: i64, language_id: i64, text: String, description: String) -> Translation {
+        Translation { id: 0, card_id, language_id, text, description }
     }
 
-    /// Save a translation for a given card to the database
-    pub fn save(&mut self, conn: &sqlite::Connection, card_id: i64) -> Result<i64, DatabaseError> {
-        let statement = "
-            INSERT INTO translation (card_id, language_id, text, description) VALUES (?, ?, ?, ?)
-        ";
+}
+
+
+impl Model for Translation {
+    /// Table name for Translation
+    const TABLE_NAME: &'static str = "translation";
+
+    /// Instantiate an empty Translation
+    fn from_empty() -> Translation {
+        Translation {
+            id: 0, card_id: 0, language_id: 0, text: "".to_string(), description: "".to_string()
+        }
+    }
+
+    /// Instantiate a Translation from given SQLite row
+    fn from_row(row: &[sqlite::Value]) -> Result<Translation, DatabaseError> {
+        let id = match row[0].as_integer() {
+            Some(id) => id,
+            None => { return Err(DatabaseError::ValueNotInteger); },
+        };
+        let card_id = match row[1].as_integer() {
+            Some(id) => id,
+            None => { return Err(DatabaseError::ValueNotInteger); },
+        };
+        let language_id = match row[2].as_integer() {
+            Some(id) => id,
+            None => { return Err(DatabaseError::ValueNotInteger); },
+        };
+        let text = match row[3].as_string() {
+            Some(code) => code.to_string(),
+            None => { return Err(DatabaseError::ValueNotInteger); },
+        };
+        let description = match row[4].as_string() {
+            Some(name) => name.to_string(),
+            None => { return Err(DatabaseError::ValueNotString); },
+        };
+        Ok(Translation { id, card_id, language_id, text, description})
+    }
+
+    /// Load a Translation by given identifier from database
+    fn load(conn: &sqlite::Connection, id: i64) -> Result<Translation, DatabaseError> {
+        let statement = format!(
+            "SELECT id, card_id, language_id, text, description from {} WHERE id = ?",
+            Translation::TABLE_NAME,
+        );
+        let mut cursor = conn.prepare(statement)?.cursor();
+        cursor.bind(&[sqlite::Value::Integer(id)])?;
+        while let Some(row) = cursor.next()? {
+            let translation = Translation::from_row(row)?;
+            return Ok(translation);
+        }
+        Err(DatabaseError::NotFound)
+    }
+
+    /// Load all existing Translation from database
+    fn load_all(conn: &sqlite::Connection) -> Result<Vec<Translation>, DatabaseError> {
+        let statement = format!(
+            "Select id, card_id, language_id, text, description from {} ORDER BY id",
+            Translation::TABLE_NAME,
+        );
+        let mut cursor = conn.prepare(statement)?.cursor();
+        let mut translations = Vec::new();
+        while let Some(row) = cursor.next()? {
+            let translation = Translation::from_row(row)?;
+            translations.push(translation);
+        }
+        Ok(translations)
+    }
+
+    /// Save the Translation to the database
+    fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        let statement = format!(
+            "INSERT INTO {} (card_id, language_id, text, description) VALUES (?, ?, ?, ?)",
+            Translation::TABLE_NAME,
+        );
         let mut cursor = conn.prepare(statement)?.cursor();
         cursor.bind(&[
-            sqlite::Value::Integer(card_id),
-            sqlite::Value::Integer(self.language.id),
+            sqlite::Value::Integer(self.card_id),
+            sqlite::Value::Integer(self.language_id),
             sqlite::Value::String(self.text.clone()),
             sqlite::Value::String(self.description.clone()),
         ])?;
         cursor.next()?;
-        self.id = last_insert_id(conn, "translation")?;
+        self.id = last_insert_id(conn, Translation::TABLE_NAME)?;
         Ok(self.id)
     }
 }

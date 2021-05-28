@@ -23,14 +23,15 @@ use crate::DEFAULT_DB_PATH;
 pub enum DatabaseError {
     /// A file could not be found, the filename should be in the string
     FileNotFound(String),
+    /// Item has not been found
+    NotFound,
     /// An error within SQLite occurred, the error message should be in the string
     SQLiteError(String),
     /// The value returned by the database is not the expected integer
     ValueNotInteger,
     /// The value returned by the database is not the expected string
     ValueNotString,
-    /// Is an unexpected error occurs
-    Unexpected,
+
 }
 
 /// The implementation of the Error trait is empty
@@ -52,11 +53,11 @@ impl fmt::Display for DatabaseError {
       match self {
           DatabaseError::FileNotFound(db_path) =>
               write!(f, "{}: File not found: {}!", prefix, db_path),
+          DatabaseError::NotFound => write!(f, "{}: Item has not been found!", prefix),
           DatabaseError::SQLiteError(msg) =>
               write!(f, "{}: SQLite error: {}!", prefix, msg),
           DatabaseError::ValueNotInteger => write!(f, "{}: Value not an integer!", prefix),
           DatabaseError::ValueNotString => write!(f, "{}: Value not a string!", prefix),
-          DatabaseError::Unexpected => write!(f, "{}: Something unexpected happened!", prefix),
       }
   }
 }
