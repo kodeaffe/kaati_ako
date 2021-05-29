@@ -3,6 +3,8 @@
 use sqlite;
 
 use crate::database::DatabaseError;
+use crate::models::category::Category;
+use crate::models::translation::Translation;
 use super::Model;
 
 
@@ -11,15 +13,23 @@ use super::Model;
 pub struct Card {
     /// Identifier of the card
     pub id: i64,
-    /// Category of the card
+    /// Identifier of the Card's category
     pub category_id: i64,
+
+    /// Category of the card
+    pub category: Category,
+
+    /// Translations of the card
+    pub translations: Vec<Translation>,
 }
 
 
 impl Card {
     /// Instantiate a new Card for given category
     pub fn new(category_id: i64) -> Card {
-        Card { id: 0, category_id }
+        let mut card = Card::from_empty();
+        card.category_id = category_id;
+        card
     }
 
     /// Get the id of a random Card
@@ -45,7 +55,12 @@ impl Model for Card {
     const STATEMENT_SAVE: &'static str = "INSERT INTO card (category_id) VALUES (?)";
 
     fn from_empty() -> Card {
-        Card { id: 0, category_id: 0 }
+        Card {
+            id: 0,
+            category_id: 0,
+            category: Category::from_empty(),
+            translations: vec![Translation::from_empty()],
+        }
     }
 
     fn from_row(row: &[sqlite::Value]) -> Result<Card, DatabaseError> {
@@ -57,7 +72,10 @@ impl Model for Card {
             Some(id) => id,
             None => { return Err(DatabaseError::ValueNotInteger); },
         };
-        Ok(Card { id, category_id })
+        let mut card = Card::from_empty();
+        card.id = id;
+        card.category_id = category_id;
+        Ok(card)
     }
 
     fn get_save_values(&self) -> Vec<sqlite::Value> {

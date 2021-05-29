@@ -25,7 +25,7 @@ use crate::models::card::Card;
 use crate::models::category::Category;
 use crate::models::language::Language;
 use crate::models::translation::Translation;
-use crate::database::get_connection;
+use crate::database::{get_connection, DatabaseError};
 use crate::VERSION;
 
 
@@ -35,68 +35,18 @@ pub const WIDGET_NAME_CONTENT: &str = "content";
 pub const WIDGET_NAME_CARD: &str = "card";
 
 
-/// Build the application's action bar
-fn build_action_bar(window: &gtk::ApplicationWindow) -> gtk::ActionBar {
-    let action_bar = gtk::ActionBar::new();
-    let next = gtk::Button::from_icon_name(
-        Some("go-next"), gtk::IconSize::Button);
-    next.connect_clicked(glib::clone!(@weak window => move |_| {
-        replace_card(&window, 0);
-    }));
-    action_bar.pack_start(&next);
-    let label = gtk::Label::new(Some("Press button or type <n> for next random card."));
-    action_bar.pack_start(&label);
-    action_bar
-}
+/// A widget for a flash card
+struct CardWidget;
 
-
-/// Build a flash card as Notebook widget, uses a random card if given card_id has value 0
-pub fn build_card(window: &gtk::ApplicationWindow, card_id: i64) -> gtk::Notebook {
-    let notebook = gtk::Notebook::new();
-    notebook.set_widget_name(WIDGET_NAME_CARD);
-    notebook.grab_focus();
-
-    let conn = match get_connection() {
-        Ok(conn) => conn,
-        Err(err) => {
-            show_error(window, &err.to_string());
-            return notebook;
-        }
-    };
-    let mut id = card_id;
-    if id == 0 {
-        id = match Card::random_id(&conn) {
-            Ok(id) => id,
-            Err(err) => {
-                show_error(window, &err.to_string());
-                return notebook;
-            }
-        }
-    }
-    let card = match Card::load(&conn, id) {
-        Ok(card) => card,
-        Err(err) => {
-            show_error(window, &err.to_string());
-            Card::from_empty()
-        }
-    };
-    let category = match Category::load(&conn, card.category_id) {
-        Ok(category) => category,
-        Err(err) => {
-            show_error(window, &err.to_string());
-            return notebook;
-        }
-    };
-    let translations = match Translation::load_for_card(&conn, card.id) {
-        Ok(translations) => translations,
-        Err(err) => {
-            show_error(window, &err.to_string());
-            return notebook;
-        }
-    };
-
-    let padding = 10;
-    for translation in translations {
+/// Implementation of the flash card widget
+impl CardWidget {
+    /// Build a card's notebook page for the given translation
+    fn build_page(
+        conn: &sqlite::Connection,
+        category: &Category,
+        translation: &Translation,
+    ) -> Result<(gtk::Box, gtk::Label), DatabaseError> {
+        let padding = 10;
         let page = gtk::Box::new(gtk::Orientation::Vertical, 0);
         page.set_homogeneous(false);
 
@@ -117,17 +67,68 @@ pub fn build_card(window: &gtk::ApplicationWindow, card_id: i64) -> gtk::Noteboo
         page_bottom.pack_end(&category_label, false, false, padding);
         page.pack_start(&page_bottom, false, false, padding);
 
-        let language = match Language::load(&conn, translation.language_id) {
-            Ok(language) => language,
+        let language = Language::load(&conn, translation.language_id)?;
+        let label = gtk::Label::new(Some(&language.name));
+        Ok((page, label))
+    }
+
+    /// Get a card with given id from database, including category and translations
+    fn get_card(conn: &sqlite::Connection, card_id: i64) -> Result<Card, DatabaseError> {
+        let id = if card_id == 0 { Card::random_id(&conn)? } else { card_id };
+        let mut card = Card::load(conn, id)?;
+        card.category = Category::load(conn, card.category_id)?;
+        card.translations = Translation::load_for_card(conn, card.id)?;
+        Ok(card)
+    }
+
+    /// Build a flash card as Notebook widget, uses a random card if given card_id has value 0
+    pub fn build(window: &gtk::ApplicationWindow, card_id: i64) -> gtk::Notebook {
+        let notebook = gtk::Notebook::new();
+        notebook.set_widget_name(WIDGET_NAME_CARD);
+        notebook.grab_focus();
+
+        let conn = match get_connection() {
+            Ok(conn) => conn,
             Err(err) => {
                 show_error(window, &err.to_string());
                 return notebook;
             }
         };
-        let tab_label = gtk::Label::new(Some(&language.name));
-        notebook.append_page(&page, Some(&tab_label));
+        let card = match CardWidget::get_card(&conn, card_id) {
+            Ok(card) => card,
+            Err(err) => {
+                show_error(window, &err.to_string());
+                return notebook;
+            }
+        };
+        for translation in card.translations {
+            match CardWidget::build_page(&conn, &card.category, &translation) {
+                Ok((page, label)) => {
+                    notebook.append_page(&page, Some(&label));
+                }
+                Err(err) => {
+                    show_error(window, &err.to_string());
+                    return notebook;
+                }
+            }
+        }
+        notebook
     }
-    notebook
+}
+
+
+/// Build the application's action bar
+fn build_action_bar(window: &gtk::ApplicationWindow) -> gtk::ActionBar {
+    let action_bar = gtk::ActionBar::new();
+    let next = gtk::Button::from_icon_name(
+        Some("go-next"), gtk::IconSize::Button);
+    next.connect_clicked(glib::clone!(@weak window => move |_| {
+        replace_card(&window, 0);
+    }));
+    action_bar.pack_start(&next);
+    let label = gtk::Label::new(Some("Press button or type <n> for next random card."));
+    action_bar.pack_start(&label);
+    action_bar
 }
 
 
@@ -136,7 +137,7 @@ pub fn build_content(window: &gtk::ApplicationWindow) -> gtk::Box {
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.set_widget_name(WIDGET_NAME_CONTENT);
 
-    let card = build_card(window, 0);
+    let card = CardWidget::build(window, 0);
     content.pack_start(&card, true, true, 10);
 
     let action_bar = build_action_bar(window);
@@ -177,7 +178,7 @@ pub fn replace_card(window: &gtk::ApplicationWindow, card_id: i64) {
                             match child.downcast::<gtk::Notebook>() {
                                 Ok(card) => {
                                     vbox.remove(&card);
-                                    let card = build_card(window, card_id);
+                                    let card = CardWidget::build(window, card_id);
                                     vbox.pack_start(&card, true, true, 10);
                                     vbox.show_all();
                                     card.grab_focus(); // Focus must be grabbed after being shown
