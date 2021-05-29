@@ -21,7 +21,7 @@ mod database;
 mod models;
 mod ui;
 
-use ui::build;
+use ui::UI;
 
 
 /// Default path to database file
@@ -36,7 +36,7 @@ fn main() {
     let application = gtk::Application::new(
         Some("com.github.kodeaffe.kaati_ako"), Default::default()).unwrap();
     application.connect_activate(|app| {
-        build(app);
+        UI::build(app);
     });
     application.run(&std::env::args().collect::<Vec<_>>());
 }
