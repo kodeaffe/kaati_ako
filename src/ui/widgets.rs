@@ -288,11 +288,11 @@ pub fn show_add_card(parent: &gtk::ApplicationWindow) {
             };
             let mut card = Card::new(category.id);
             match card.save(&conn) {
+                Ok(id) => card.id = id,
                 Err(err) => {
                     show_error(&parent, &err.to_string());
                     return;
                 },
-                _ => (),
             }
             for language in &languages {
                 let mut text = String::new();
@@ -317,11 +317,11 @@ pub fn show_add_card(parent: &gtk::ApplicationWindow) {
                 let mut translation = Translation::new(
                     card.id, language.id, text.clone(), description.clone());
                 match translation.save(&conn) {
+                    Ok(id) => translation.id = id,
                     Err(err) => {
                         show_error(&parent, &err.to_string());
                         return;
                     },
-                    _ => (),
                 }
             }
             replace_card(&parent, card.id);

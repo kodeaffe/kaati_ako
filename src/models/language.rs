@@ -2,7 +2,7 @@
 
 use sqlite;
 
-use crate::database::{DatabaseError, last_insert_id};
+use crate::database::DatabaseError;
 use super::Model;
 
 
@@ -27,15 +27,15 @@ impl Language {
 
 
 impl Model for Language {
-    /// Table name for Language
     const TABLE_NAME: &'static str = "language";
+    const STATEMENT_LOAD: &'static str = "SELECT id, code, name FROM language WHERE id = ?";
+    const STATEMENT_LOAD_ALL: &'static str = "SELECT id, code, name FROM language ORDER BY name";
+    const STATEMENT_SAVE: &'static str = "INSERT INTO language (code, name) VALUES (?, ?)";
 
-    /// Instantiate an empty Language
     fn from_empty() -> Language {
         Language { id: 0, code: "".to_string(), name: "".to_string() }
     }
 
-    /// Construct a Language from given SQLite row
     fn from_row(row: &[sqlite::Value]) -> Result<Language, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
@@ -52,42 +52,10 @@ impl Model for Language {
         Ok(Language { id, code, name })
     }
 
-    /// Load a Language by given identifier from database
-    fn load(conn: &sqlite::Connection, id: i64) -> Result<Language, DatabaseError> {
-        let statement = format!(
-            "SELECT id, code, name from {} WHERE id = ?", Language::TABLE_NAME);
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[sqlite::Value::Integer(id)])?;
-        while let Some(row) = cursor.next()? {
-            let language = Language::from_row(row)?;
-            return Ok(language);
-        }
-        Err(DatabaseError::NotFound)
-    }
-
-    /// Load all existing Languages from database
-    fn load_all(conn: &sqlite::Connection) -> Result<Vec<Language>, DatabaseError> {
-        let statement = format!(
-            "Select id, code, name from {} ORDER BY id", Language::TABLE_NAME);
-        let mut cursor = conn.prepare(statement)?.cursor();
-        let mut languages = Vec::new();
-        while let Some(row) = cursor.next()? {
-            let language = Language::from_row(row)?;
-            languages.push(language);
-        }
-        Ok(languages)
-    }
-
-    /// Save the Language to the database and set the id
-    fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
-        let statement = "INSERT INTO language (code, name) VALUES (?, ?)";
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[
+    fn get_save_values(&self) -> Vec<sqlite::Value> {
+        vec![
             sqlite::Value::String(self.code.clone()),
             sqlite::Value::String(self.name.clone()),
-        ])?;
-        cursor.next()?;
-        self.id = last_insert_id(conn, Language::TABLE_NAME)?;
-        Ok(self.id)
+        ]
     }
 }

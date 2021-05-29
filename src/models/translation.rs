@@ -2,7 +2,7 @@
 
 use sqlite;
 
-use crate::database::{DatabaseError, last_insert_id};
+use crate::database::DatabaseError;
 use super::Model;
 
 
@@ -29,7 +29,7 @@ impl Translation {
         card_id: i64,
     ) -> Result<Vec<Translation>, DatabaseError> {
         let statement = format!(
-            "SELECT id FROM {} WHERE card_id = ?", Translation::TABLE_NAME);
+            "SELECT id FROM {} WHERE card_id = ? ORDER BY language_id", Translation::TABLE_NAME);
         let mut cursor = conn.prepare(statement)?.cursor();
         cursor.bind(&[sqlite::Value::Integer(card_id)])?;
         let mut translations = Vec::new();
@@ -52,17 +52,20 @@ impl Translation {
 
 
 impl Model for Translation {
-    /// Table name for Translation
     const TABLE_NAME: &'static str = "translation";
+    const STATEMENT_LOAD: &'static str =
+        "SELECT id, card_id, language_id, text, description FROM translation WHERE id = ?";
+    const STATEMENT_LOAD_ALL: &'static str =
+        "SELECT id, card_id, language_id, text, description FROM translation ORDER BY id";
+    const STATEMENT_SAVE: &'static str =
+        "INSERT INTO translation (card_id, language_id, text, description) VALUES (?, ?, ?, ?)";
 
-    /// Instantiate an empty Translation
     fn from_empty() -> Translation {
         Translation {
             id: 0, card_id: 0, language_id: 0, text: "".to_string(), description: "".to_string()
         }
     }
 
-    /// Instantiate a Translation from given SQLite row
     fn from_row(row: &[sqlite::Value]) -> Result<Translation, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
@@ -87,51 +90,12 @@ impl Model for Translation {
         Ok(Translation { id, card_id, language_id, text, description})
     }
 
-    /// Load a Translation by given identifier from database
-    fn load(conn: &sqlite::Connection, id: i64) -> Result<Translation, DatabaseError> {
-        let statement = format!(
-            "SELECT id, card_id, language_id, text, description from {} WHERE id = ?",
-            Translation::TABLE_NAME,
-        );
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[sqlite::Value::Integer(id)])?;
-        while let Some(row) = cursor.next()? {
-            let translation = Translation::from_row(row)?;
-            return Ok(translation);
-        }
-        Err(DatabaseError::NotFound)
-    }
-
-    /// Load all existing Translation from database
-    fn load_all(conn: &sqlite::Connection) -> Result<Vec<Translation>, DatabaseError> {
-        let statement = format!(
-            "Select id, card_id, language_id, text, description from {} ORDER BY id",
-            Translation::TABLE_NAME,
-        );
-        let mut cursor = conn.prepare(statement)?.cursor();
-        let mut translations = Vec::new();
-        while let Some(row) = cursor.next()? {
-            let translation = Translation::from_row(row)?;
-            translations.push(translation);
-        }
-        Ok(translations)
-    }
-
-    /// Save the Translation to the database
-    fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
-        let statement = format!(
-            "INSERT INTO {} (card_id, language_id, text, description) VALUES (?, ?, ?, ?)",
-            Translation::TABLE_NAME,
-        );
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[
+    fn get_save_values(&self) -> Vec<sqlite::Value> {
+        vec![
             sqlite::Value::Integer(self.card_id),
             sqlite::Value::Integer(self.language_id),
             sqlite::Value::String(self.text.clone()),
             sqlite::Value::String(self.description.clone()),
-        ])?;
-        cursor.next()?;
-        self.id = last_insert_id(conn, Translation::TABLE_NAME)?;
-        Ok(self.id)
+        ]
     }
 }

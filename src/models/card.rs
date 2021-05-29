@@ -2,7 +2,7 @@
 
 use sqlite;
 
-use crate::database::{DatabaseError, last_insert_id};
+use crate::database::DatabaseError;
 use super::Model;
 
 
@@ -39,15 +39,15 @@ impl Card {
 
 
 impl Model for Card {
-    /// Table name for Card
     const TABLE_NAME: &'static str = "card";
+    const STATEMENT_LOAD: &'static str = "SELECT id, category_id FROM card WHERE id = ?";
+    const STATEMENT_LOAD_ALL: &'static str = "SELECT id, category_id FROM card ORDER BY id";
+    const STATEMENT_SAVE: &'static str = "INSERT INTO card (category_id) VALUES (?)";
 
-    /// Instantiate an empty Card
     fn from_empty() -> Card {
         Card { id: 0, category_id: 0 }
     }
 
-    /// Construct a Card from given SQLite row
     fn from_row(row: &[sqlite::Value]) -> Result<Card, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
@@ -60,39 +60,7 @@ impl Model for Card {
         Ok(Card { id, category_id })
     }
 
-    /// Load a Card with translations by given identifier from database
-    fn load(conn: &sqlite::Connection, id: i64) -> Result<Card, DatabaseError> {
-        let statement = format!(
-            "SELECT id, category_id FROM {} WHERE card.id = ?", Card::TABLE_NAME);
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[sqlite::Value::Integer(id)])?;
-        while let Some(row) = cursor.next()? {
-            let card = Card::from_row(row)?;
-            return Ok(card);
-        }
-        Err(DatabaseError::NotFound)
-    }
-
-    /// Load all Cards with translations from database
-    fn load_all(conn: &sqlite::Connection) -> Result<Vec<Card>, DatabaseError> {
-        let statement = format!(
-            "SELECT id, category_id FROM {} ORDER BY card.id = ?", Card::TABLE_NAME);
-        let mut cursor = conn.prepare(statement)?.cursor();
-        let mut cards = Vec::new();
-        while let Some(row) = cursor.next()? {
-            let card = Card::from_row(row)?;
-            cards.push(card);
-        }
-        Ok(cards)
-    }
-
-    /// Save the Card to the database and set the id
-    fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
-        let statement = "INSERT INTO card (category_id) VALUES (?)";
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[sqlite::Value::Integer(self.category_id)])?;
-        cursor.next()?;
-        self.id = last_insert_id(conn, Card::TABLE_NAME)?;
-        Ok(self.id)
+    fn get_save_values(&self) -> Vec<sqlite::Value> {
+        vec![sqlite::Value::Integer(self.category_id)]
     }
 }

@@ -2,7 +2,7 @@
 
 use sqlite;
 
-use crate::database::{DatabaseError, last_insert_id};
+use crate::database::DatabaseError;
 use super::Model;
 
 
@@ -26,14 +26,15 @@ impl Category {
 
 
 impl Model for Category {
-    /// Table name for Category
     const TABLE_NAME: &'static str = "category";
+    const STATEMENT_LOAD: &'static str = "SELECT id, name FROM category WHERE id = ?";
+    const STATEMENT_LOAD_ALL: &'static str = "SELECT id, name FROM category ORDER BY name";
+    const STATEMENT_SAVE: &'static str = "INSERT INTO category (name) VALUES (?)";
 
-    /// Instantiate an empty Category
     fn from_empty() -> Category {
         Category { id: 0, name: "".to_string() }
     }
-    /// Instantiate a Category from given SQLite row
+
     fn from_row(row: &[sqlite::Value]) -> Result<Category, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
@@ -46,40 +47,7 @@ impl Model for Category {
         Ok(Category { id, name })
     }
 
-    /// Load a Category by given identifier from the database
-    fn load(conn: &sqlite::Connection, id: i64) -> Result<Category, DatabaseError> {
-        let statement = format!(
-            "SELECT id, name from {} WHERE id = ?", Category::TABLE_NAME);
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[sqlite::Value::Integer(id)])?;
-        while let Some(row) = cursor.next()? {
-            let category = Category::from_row(row)?;
-            return Ok(category);
-        }
-        Err(DatabaseError::NotFound)
-    }
-
-    /// Load all existing Category from database
-    fn load_all(conn: &sqlite::Connection) -> Result<Vec<Category>, DatabaseError> {
-        let statement = format!("Select id, name from {} ORDER BY id", Category::TABLE_NAME);
-        let mut cursor = conn.prepare(statement)?.cursor();
-        let mut categories = Vec::new();
-        while let Some(row) = cursor.next()? {
-            let category = Category::from_row(row)?;
-            categories.push(category);
-        }
-        Ok(categories)
-    }
-
-    /// Save the Category to the database and set the id
-    fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
-        let statement = "INSERT INTO category (name) VALUES (?)";
-        let mut cursor = conn.prepare(statement)?.cursor();
-        cursor.bind(&[
-            sqlite::Value::String(self.name.clone()),
-        ])?;
-        cursor.next()?;
-        self.id = last_insert_id(conn, Category::TABLE_NAME)?;
-        Ok(self.id)
+    fn get_save_values(&self) -> Vec<sqlite::Value> {
+        vec![sqlite::Value::String(self.name.clone())]
     }
 }
