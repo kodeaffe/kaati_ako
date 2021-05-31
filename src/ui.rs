@@ -1,12 +1,22 @@
 //! Contains code to build the user interface
 
+mod dialogs;
+mod widgets;
+
 use gdk::Screen;
 use gio::ActionMapExt;
 use gtk::{ContainerExt, GtkApplicationExt, GtkWindowExt, WidgetExt};
 
-pub mod widgets;
+use dialogs::about::About;
+use dialogs::addcard::AddCard;
+use widgets::card::Card;
+use widgets::content::Content;
 
-use widgets::{AboutDialog, AddCardDialog, CardWidget, Content};
+
+/// The name of content widget which contains the flash card
+const WIDGET_NAME_CONTENT: &str = "content";
+/// The name of flash card's widget
+const WIDGET_NAME_CARD: &str = "card";
 
 
 /// The application's user interface
@@ -38,19 +48,19 @@ impl UI {
 
         let about = gio::SimpleAction::new("about", None);
         about.connect_activate(glib::clone!(@weak window => move |_, _| {
-            AboutDialog::show(&window);
+            About::show(&window);
         }));
         app.add_action(&about);
 
         let add_card = gio::SimpleAction::new("add_card", None);
         add_card.connect_activate(glib::clone!(@weak window => move |_, _| {
-            AddCardDialog::show(&window);
+            AddCard::show(&window);
         }));
         app.add_action(&add_card);
 
         let next_card = gio::SimpleAction::new("next_card", None);
         next_card.connect_activate(glib::clone!(@weak window => move |_, _| {
-            CardWidget::replace(&window, 0);
+            Card::replace(&window, 0);
         }));
         app.add_action(&next_card);
     }
