@@ -1,7 +1,7 @@
 //! Module for the flash card widget
 
-use glib::Cast;
-use gtk::{BoxExt, ContainerExt, LabelExt, WidgetExt};
+use glib::{Cast, ObjectExt};
+use gtk::{BoxExt, ContainerExt, LabelExt, Notebook, WidgetExt};
 use gtk::prelude::NotebookExtManual;
 
 use crate::database::{get_connection, DatabaseError};
@@ -91,11 +91,14 @@ impl Card {
                 }
             }
         }
+        unsafe {
+            notebook.set_data("card_id", card.id);
+        }
         notebook
     }
 
-    /// Replace the shown flash card by the card with given id
-    pub fn replace(window: &gtk::ApplicationWindow, card_id: i64) {
+    /// Find the currently shown card widget
+    pub fn find(window: &gtk::ApplicationWindow) -> Option<Notebook> {
         // TODO: Is there a better way to find the box and card?
         for widget in window.get_children() {
             if widget.get_widget_name() == WIDGET_NAME_CONTENT {
@@ -104,16 +107,7 @@ impl Card {
                         for child in vbox.get_children() {
                             if child.get_widget_name() == WIDGET_NAME_CARD {
                                 match child.downcast::<gtk::Notebook>() {
-                                    Ok(card) => {
-                                        vbox.remove(&card);
-                                        let card = Card::build(window, card_id);
-                                        vbox.pack_start(
-                                            &card, true, true, 10);
-                                        vbox.show_all();
-                                        // Focus must be grabbed after being shown
-                                        card.grab_focus();
-                                        return;
-                                    },
+                                    Ok(card) => { return Some(card); },
                                     _ => {},
                                 }
                             }
@@ -122,6 +116,32 @@ impl Card {
                     _ => {},
                 }
             }
+        }
+        None
+    }
+
+    /// Replace the shown flash card by the card with given id
+    pub fn replace(window: &gtk::ApplicationWindow, card_id: i64) {
+        match Card::find(window) {
+            Some(card) => {
+                match card.get_parent() {
+                    Some(parent) => {
+                        match parent.downcast::<gtk::Box>() {
+                            Ok(vbox) => {
+                                vbox.remove(&card);
+                                let card = Card::build(window, card_id);
+                                vbox.pack_start(&card, true, true, 10);
+                                vbox.show_all();
+                                // Focus must be grabbed after being shown
+                                card.grab_focus();
+                            }
+                            _ => {},
+                        }
+                    },
+                    None => {},
+                }
+            }
+            None => {},
         }
     }
 }

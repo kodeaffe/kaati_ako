@@ -25,6 +25,15 @@ pub trait Model {
     /// SQL Statement to save one item to database
     const STATEMENT_SAVE: &'static str;
 
+    /// Delete one object from database by id; default implementation available
+    fn delete(conn: &sqlite::Connection, id: i64) -> Result<bool, DatabaseError> where Self: Sized {
+        let statement = format!("DELETE FROM {} where id = ?", Self::TABLE_NAME);
+        let mut cursor = conn.prepare(statement)?.cursor();
+        cursor.bind(&[sqlite::Value::Integer(id)])?;
+        cursor.next()?;
+        Ok(true)
+    }
+
     /// Instantiate an empty object
     fn from_empty() -> Self;
 

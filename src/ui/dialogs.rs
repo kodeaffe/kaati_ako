@@ -2,4 +2,5 @@
 
 pub mod about;
 pub mod addcard;
+pub mod deletecard;
 pub mod error;
