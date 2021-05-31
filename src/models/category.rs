@@ -17,6 +17,19 @@ pub struct Category {
 
 
 impl Category {
+    const STATEMENT_LOAD_BY_NAME: &'static str = "SELECT id, name FROM category WHERE name = ?";
+
+    /// Load one object from database by id; default implementation available
+    pub fn load_by_name(conn: &sqlite::Connection, name: String) -> Result<Category, DatabaseError> {
+        let mut cursor = conn.prepare(Category::STATEMENT_LOAD_BY_NAME)?.cursor();
+        cursor.bind(&[sqlite::Value::String(name)])?;
+        while let Some(row) = cursor.next()? {
+            let item = Self::from_row(row)?;
+            return Ok(item);
+        }
+        Err(DatabaseError::NotFound)
+    }
+
     /// Instantiate a new category
     #[allow(dead_code)]
     pub fn new(id: i64, name: String) -> Category {

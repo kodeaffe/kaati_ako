@@ -1,7 +1,17 @@
 //! Module for the dialog to add a new flash card
 
 use glib::Cast;
-use gtk::{BoxExt, ContainerExt, DialogExt, EntryExt, GridExt, GtkWindowExt, WidgetExt};
+use gtk::{
+    BoxExt,
+    ComboBoxTextExt,
+    ContainerExt,
+    DialogExt,
+    EntryExt,
+    GridExt,
+    GtkWindowExt,
+    WidgetExt,
+    prelude::ComboBoxExtManual,
+};
 
 use crate::database::{DatabaseError, get_connection};
 use crate::models::Model;
@@ -18,8 +28,19 @@ pub struct AddCard;
 
 /// Implementation of the dialog to add a flash card
 impl AddCard {
+    /// Build category widget
+    fn build_category(conn: &sqlite::Connection) -> Result<gtk::ComboBoxText, DatabaseError> {
+        let combo = gtk::ComboBoxText::new();
+        let categories = Category::load_all(&conn)?;
+        for category in categories {
+            combo.append_text(&category.name);
+        }
+        combo.set_active(Some(0));
+        Ok(combo)
+    }
+
     /// Build the language grid
-    fn build_grid(languages: &Vec<Language>) -> Result<gtk::Grid, DatabaseError> {
+    fn build_languages(languages: &Vec<Language>) -> Result<gtk::Grid, DatabaseError> {
         let grid = gtk::Grid::new();
         grid.set_column_spacing(5);
         grid.set_row_spacing(10);
@@ -54,17 +75,23 @@ impl AddCard {
             ],
         );
         let conn = get_connection()?;
+        let spacing = 10;
         let languages = Language::load_all(&conn)?;
         let content = dialog.get_content_area();
-        let text = gtk::Label::new(Some("Category: default"));
-        content.pack_start(&text, true, true, 20);
-        let grid = AddCard::build_grid(&languages)?;
-        content.pack_start(&grid, true, true, 10);
+        content.set_margin_start(spacing as i32);
+        content.set_margin_end(spacing as i32);
+        let label = gtk::Label::new(Some("Category"));
+        label.set_halign(gtk::Align::Start);
+        content.pack_start(&label, false, false, spacing);
+        let combo = AddCard::build_category(&conn)?;
+        content.pack_start(&combo, false, false, spacing);
+        let grid = AddCard::build_languages(&languages)?;
+        content.pack_start(&grid, false, false, spacing);
         let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
-        content.pack_end(&separator, true, true, 10);
+        content.pack_end(&separator, false, false, spacing);
         dialog.connect_response(glib::clone!(@weak parent => move |_, response_type| {
             if response_type == gtk::ResponseType::Accept {
-                AddCard::response_accept(&parent, &conn, &languages, &grid);
+                AddCard::response_accept(&parent, &conn, &languages, &combo, &grid);
             }
         }));
         Ok(dialog)
@@ -76,15 +103,24 @@ impl AddCard {
         parent: &gtk::ApplicationWindow,
         conn: &sqlite::Connection,
         languages: &Vec<Language>,
+        combo: &gtk::ComboBoxText,
         grid: &gtk::Grid,
     ) {
         // TODO: Get category id from user
-        let category = match Category::load(&conn, 1) {
-            Ok(category) => category,
-            Err(err) => {
-                Error::show(&parent, &err.to_string());
+        let category = match combo.get_active_text() {
+            Some(name)  => {
+                match Category::load_by_name(&conn, name.to_string()) {
+                    Ok(category) => category,
+                    Err(err) => {
+                        Error::show(&parent, &err.to_string());
+                        return;
+                    }
+                }
+            },
+            None => {
+                Error::show(&parent, "No category selected!");
                 return;
-            }
+            },
         };
         let mut card = Card::new(category.id);
         match card.save(&conn) {
