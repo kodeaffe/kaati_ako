@@ -50,22 +50,16 @@ impl Translation {
 
     /// Save a Translation to database (insert or update)
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        let mut values = vec![
+            sqlite::Value::Integer(self.card_id),
+            sqlite::Value::Integer(self.language_id),
+            sqlite::Value::String(self.text.clone()),
+            sqlite::Value::String(self.description.clone()),
+        ];
         if self.id > 0 {
-            let values = vec![
-                sqlite::Value::Integer(self.card_id),
-                sqlite::Value::Integer(self.language_id),
-                sqlite::Value::String(self.text.clone()),
-                sqlite::Value::String(self.description.clone()),
-                sqlite::Value::Integer(self.id),
-            ];
+            values.push(sqlite::Value::Integer(self.id));
             Translation::update(conn, &values)?;
         } else {
-            let values = vec![
-                sqlite::Value::Integer(self.card_id),
-                sqlite::Value::Integer(self.language_id),
-                sqlite::Value::String(self.text.clone()),
-                sqlite::Value::String(self.description.clone()),
-            ];
             self.id = Translation::insert(conn, &values)?;
         }
         Ok(self.id)

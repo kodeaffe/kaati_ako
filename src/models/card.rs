@@ -48,14 +48,11 @@ impl Card {
 
     /// Save a Card to database (insert or update)
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        let mut values = vec![sqlite::Value::Integer(self.category_id)];
         if self.id > 0 {
-            let values = vec![
-                sqlite::Value::Integer(self.category_id),
-                sqlite::Value::Integer(self.id),
-            ];
+            values.push(sqlite::Value::Integer(self.id));
             Card::update(conn, &values)?;
         } else {
-            let values = vec![sqlite::Value::Integer(self.category_id)];
             self.id = Card::insert(conn, &values)?;
         }
         Ok(self.id)

@@ -39,14 +39,11 @@ impl Category {
     #[allow(dead_code)]
     /// Save a Category to database (insert or update)
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        let mut values = vec![sqlite::Value::String(self.name.clone())];
         if self.id > 0 {
-            let values = vec![
-                sqlite::Value::String(self.name.clone()),
-                sqlite::Value::Integer(self.id),
-            ];
+            values.push(sqlite::Value::Integer(self.id));
             Category::update(conn, &values)?;
         } else {
-            let values = vec![sqlite::Value::String(self.name.clone())];
             self.id = Category::insert(conn, &values)?;
         }
         Ok(self.id)

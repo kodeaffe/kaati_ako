@@ -27,18 +27,15 @@ impl Language {
     /// Save a Language to database (insert or update)
     #[allow(dead_code)]
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        let mut values = vec![
+            sqlite::Value::String(self.code.clone()),
+            sqlite::Value::String(self.name.clone()),
+        ];
         if self.id > 0 {
-            let values = vec![
-                sqlite::Value::String(self.code.clone()),
-                sqlite::Value::String(self.name.clone()),
-                sqlite::Value::Integer(self.id),
-            ];
+            values.push(sqlite::Value::Integer(self.id));
             Language::update(conn, &values)?;
         } else {
-            let values = vec![
-                sqlite::Value::String(self.code.clone()),
-                sqlite::Value::String(self.name.clone()),
-            ];
+
             self.id = Language::insert(conn, &values)?;
         }
         Ok(self.id)
