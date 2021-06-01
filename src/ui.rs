@@ -37,7 +37,7 @@ impl UI {
         app.set_accels_for_action(
             "app.add_card", &["<Primary>A"]);
         app.set_accels_for_action(
-            "app.confirm_delete_card", &["<Primary>D"]);
+            "app.delete_card", &["<Primary>D"]);
         app.set_accels_for_action("app.quit", &["<Primary>Q"]);
     }
 
@@ -61,12 +61,12 @@ impl UI {
         }));
         app.add_action(&add_card);
 
-        let confirm_delete_card = gio::SimpleAction::new(
-            "confirm_delete_card", None);
-        confirm_delete_card.connect_activate(glib::clone!(@weak window => move |_, _| {
+        let delete_card = gio::SimpleAction::new(
+            "delete_card", None);
+        delete_card.connect_activate(glib::clone!(@weak window => move |_, _| {
             DeleteCard::show(&window);
         }));
-        app.add_action(&confirm_delete_card);
+        app.add_action(&delete_card);
 
         let next_card = gio::SimpleAction::new("next_card", None);
         next_card.connect_activate(glib::clone!(@weak window => move |_, _| {
@@ -106,7 +106,7 @@ impl UI {
         card_menu.append(Some("Add card"), Some("app.add_card"));
         card_menu.append(Some("Edit current card"), Some("app.edit_card"));
         card_menu.append(
-            Some("Delete current card"), Some("app.confirm_delete_card"));
+            Some("Delete current card"), Some("app.delete_card"));
 
         let about_menu = gio::Menu::new();
         about_menu.append(Some("About"), Some("app.about"));
