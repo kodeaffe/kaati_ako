@@ -48,17 +48,41 @@ impl Translation {
         Translation { id: 0, card_id, language_id, text, description }
     }
 
+    /// Save a Translation to database (insert or update)
+    pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        if self.id > 0 {
+            let values = vec![
+                sqlite::Value::Integer(self.card_id),
+                sqlite::Value::Integer(self.language_id),
+                sqlite::Value::String(self.text.clone()),
+                sqlite::Value::String(self.description.clone()),
+                sqlite::Value::Integer(self.id),
+            ];
+            Translation::update(conn, &values)?;
+        } else {
+            let values = vec![
+                sqlite::Value::Integer(self.card_id),
+                sqlite::Value::Integer(self.language_id),
+                sqlite::Value::String(self.text.clone()),
+                sqlite::Value::String(self.description.clone()),
+            ];
+            self.id = Translation::insert(conn, &values)?;
+        }
+        Ok(self.id)
+    }
 }
 
 
 impl Model for Translation {
     const TABLE_NAME: &'static str = "translation";
-    const STATEMENT_LOAD: &'static str =
-        "SELECT id, card_id, language_id, text, description FROM translation WHERE id = ?";
-    const STATEMENT_LOAD_ALL: &'static str =
-        "SELECT id, card_id, language_id, text, description FROM translation ORDER BY id";
-    const STATEMENT_SAVE: &'static str =
+    const STATEMENT_INSERT: &'static str =
         "INSERT INTO translation (card_id, language_id, text, description) VALUES (?, ?, ?, ?)";
+    const STATEMENT_SELECT: &'static str =
+        "SELECT id, card_id, language_id, text, description FROM translation WHERE id = ?";
+    const STATEMENT_SELECT_ALL: &'static str =
+        "SELECT id, card_id, language_id, text, description FROM translation ORDER BY id";
+    const STATEMENT_UPDATE: &'static str =
+        "UPDATE translation SET card_id = ?, language_id = ?, text = ?, description = ? WHERE id = ?";
 
     fn from_empty() -> Translation {
         Translation {
@@ -88,14 +112,5 @@ impl Model for Translation {
             None => { return Err(DatabaseError::ValueNotString); },
         };
         Ok(Translation { id, card_id, language_id, text, description})
-    }
-
-    fn get_save_values(&self) -> Vec<sqlite::Value> {
-        vec![
-            sqlite::Value::Integer(self.card_id),
-            sqlite::Value::Integer(self.language_id),
-            sqlite::Value::String(self.text.clone()),
-            sqlite::Value::String(self.description.clone()),
-        ]
     }
 }

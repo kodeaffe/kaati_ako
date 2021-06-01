@@ -124,11 +124,11 @@ impl AddCard {
         };
         let mut card = Card::new(category.id);
         match card.save(&conn) {
-            Ok(id) => card.id = id,
             Err(err) => {
                 Error::show(&parent, &err.to_string());
                 return;
             },
+            _ => {},
         }
         for language in languages {
             let mut text = String::new();
@@ -157,11 +157,11 @@ impl AddCard {
                 description.clone(),
             );
             match translation.save(&conn) {
-                Ok(id) => translation.id = id,
                 Err(err) => {
                     Error::show(&parent, &err.to_string());
                     return;
                 },
+                _ => {},
             }
         }
         CardWidget::replace(&parent, card.id);

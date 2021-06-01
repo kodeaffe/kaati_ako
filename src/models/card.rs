@@ -45,14 +45,30 @@ impl Card {
         }
         Err(DatabaseError::NotFound)
     }
+
+    /// Save a Card to database (insert or update)
+    pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        if self.id > 0 {
+            let values = vec![
+                sqlite::Value::Integer(self.category_id),
+                sqlite::Value::Integer(self.id),
+            ];
+            Card::update(conn, &values)?;
+        } else {
+            let values = vec![sqlite::Value::Integer(self.category_id)];
+            self.id = Card::insert(conn, &values)?;
+        }
+        Ok(self.id)
+    }
 }
 
 
 impl Model for Card {
     const TABLE_NAME: &'static str = "card";
-    const STATEMENT_LOAD: &'static str = "SELECT id, category_id FROM card WHERE id = ?";
-    const STATEMENT_LOAD_ALL: &'static str = "SELECT id, category_id FROM card ORDER BY id";
-    const STATEMENT_SAVE: &'static str = "INSERT INTO card (category_id) VALUES (?)";
+    const STATEMENT_INSERT: &'static str = "INSERT INTO card (category_id) VALUES (?)";
+    const STATEMENT_SELECT: &'static str = "SELECT id, category_id FROM card WHERE id = ?";
+    const STATEMENT_SELECT_ALL: &'static str = "SELECT id, category_id FROM card ORDER BY id";
+    const STATEMENT_UPDATE: &'static str = "UPDATE card SET category_id = ? WHERE id = ?";
 
     fn from_empty() -> Card {
         Card {
@@ -76,9 +92,5 @@ impl Model for Card {
         card.id = id;
         card.category_id = category_id;
         Ok(card)
-    }
-
-    fn get_save_values(&self) -> Vec<sqlite::Value> {
-        vec![sqlite::Value::Integer(self.category_id)]
     }
 }

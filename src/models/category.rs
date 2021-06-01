@@ -35,14 +35,31 @@ impl Category {
     pub fn new(id: i64, name: String) -> Category {
         Category { id, name }
     }
+
+    #[allow(dead_code)]
+    /// Save a Category to database (insert or update)
+    pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        if self.id > 0 {
+            let values = vec![
+                sqlite::Value::String(self.name.clone()),
+                sqlite::Value::Integer(self.id),
+            ];
+            Category::update(conn, &values)?;
+        } else {
+            let values = vec![sqlite::Value::String(self.name.clone())];
+            self.id = Category::insert(conn, &values)?;
+        }
+        Ok(self.id)
+    }
 }
 
 
 impl Model for Category {
     const TABLE_NAME: &'static str = "category";
-    const STATEMENT_LOAD: &'static str = "SELECT id, name FROM category WHERE id = ?";
-    const STATEMENT_LOAD_ALL: &'static str = "SELECT id, name FROM category ORDER BY name";
-    const STATEMENT_SAVE: &'static str = "INSERT INTO category (name) VALUES (?)";
+    const STATEMENT_INSERT: &'static str = "INSERT INTO category (name) VALUES (?)";
+    const STATEMENT_SELECT: &'static str = "SELECT id, name FROM category WHERE id = ?";
+    const STATEMENT_SELECT_ALL: &'static str = "SELECT id, name FROM category ORDER BY name";
+    const STATEMENT_UPDATE: &'static str = "UPDATE category SET name = ? WHERE id = ?";
 
     fn from_empty() -> Category {
         Category { id: 0, name: "".to_string() }
@@ -58,9 +75,5 @@ impl Model for Category {
             None => { return Err(DatabaseError::ValueNotString); },
         };
         Ok(Category { id, name })
-    }
-
-    fn get_save_values(&self) -> Vec<sqlite::Value> {
-        vec![sqlite::Value::String(self.name.clone())]
     }
 }

@@ -23,14 +23,35 @@ impl Language {
     pub fn new() -> Language {
         Language::from_empty()
     }
+
+    /// Save a Language to database (insert or update)
+    #[allow(dead_code)]
+    pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
+        if self.id > 0 {
+            let values = vec![
+                sqlite::Value::String(self.code.clone()),
+                sqlite::Value::String(self.name.clone()),
+                sqlite::Value::Integer(self.id),
+            ];
+            Language::update(conn, &values)?;
+        } else {
+            let values = vec![
+                sqlite::Value::String(self.code.clone()),
+                sqlite::Value::String(self.name.clone()),
+            ];
+            self.id = Language::insert(conn, &values)?;
+        }
+        Ok(self.id)
+    }
 }
 
 
 impl Model for Language {
     const TABLE_NAME: &'static str = "language";
-    const STATEMENT_LOAD: &'static str = "SELECT id, code, name FROM language WHERE id = ?";
-    const STATEMENT_LOAD_ALL: &'static str = "SELECT id, code, name FROM language ORDER BY name";
-    const STATEMENT_SAVE: &'static str = "INSERT INTO language (code, name) VALUES (?, ?)";
+    const STATEMENT_INSERT: &'static str = "INSERT INTO language (code, name) VALUES (?, ?)";
+    const STATEMENT_SELECT: &'static str = "SELECT id, code, name FROM language WHERE id = ?";
+    const STATEMENT_SELECT_ALL: &'static str = "SELECT id, code, name FROM language ORDER BY name";
+    const STATEMENT_UPDATE: &'static str = "UPDATE language SET code = ?, name = ? WHERE id = ?";
 
     fn from_empty() -> Language {
         Language { id: 0, code: "".to_string(), name: "".to_string() }
@@ -50,12 +71,5 @@ impl Model for Language {
             None => { return Err(DatabaseError::ValueNotString); },
         };
         Ok(Language { id, code, name })
-    }
-
-    fn get_save_values(&self) -> Vec<sqlite::Value> {
-        vec![
-            sqlite::Value::String(self.code.clone()),
-            sqlite::Value::String(self.name.clone()),
-        ]
     }
 }
