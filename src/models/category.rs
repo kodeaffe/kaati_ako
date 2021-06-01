@@ -24,16 +24,10 @@ impl Category {
         let mut cursor = conn.prepare(Category::STATEMENT_LOAD_BY_NAME)?.cursor();
         cursor.bind(&[sqlite::Value::String(name)])?;
         while let Some(row) = cursor.next()? {
-            let item = Self::from_row(row)?;
+            let item = Self::from_row(conn, row)?;
             return Ok(item);
         }
         Err(DatabaseError::NotFound)
-    }
-
-    /// Instantiate a new category
-    #[allow(dead_code)]
-    pub fn new(id: i64, name: String) -> Category {
-        Category { id, name }
     }
 
     #[allow(dead_code)]
@@ -58,11 +52,11 @@ impl Model for Category {
     const STATEMENT_SELECT_ALL: &'static str = "SELECT id, name FROM category ORDER BY name";
     const STATEMENT_UPDATE: &'static str = "UPDATE category SET name = ? WHERE id = ?";
 
-    fn from_empty() -> Category {
-        Category { id: 0, name: "".to_string() }
+    fn from_empty(_: &sqlite::Connection) -> Result<Category, DatabaseError> {
+        Ok(Category { id: 0, name: "".to_string() })
     }
 
-    fn from_row(row: &[sqlite::Value]) -> Result<Category, DatabaseError> {
+    fn from_row(_: &sqlite::Connection, row: &[sqlite::Value]) -> Result<Category, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
             None => { return Err(DatabaseError::ValueNotInteger); },

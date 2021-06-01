@@ -1,8 +1,5 @@
 //! Module for the dialog to delete a flash card
 
-use std::error::Error;
-
-use glib::ObjectExt;
 use gtk::{BoxExt, DialogExt, GtkWindowExt, WidgetExt};
 
 use crate::database::get_connection;
@@ -17,20 +14,6 @@ pub struct DeleteCard;
 
 /// Implementation of the dialog to delete a card
 impl DeleteCard {
-    /// Get id of the current card
-    fn get_card_id(parent: &gtk::ApplicationWindow) -> Result<i64, Box<dyn Error>> {
-        match CardWidget::find(parent) {
-            Some(card) => {
-                unsafe {
-                    match card.get_data::<i64>("card_id") {
-                        Some(id) => Ok(*id),
-                        None => Err("Cannot get card id from widget!")?,
-                    }
-                }
-            },
-            _ => Err("Cannot find card widget!")?,
-        }
-    }
 
     /// Show the dialog
     pub fn show(parent: &gtk::ApplicationWindow) {
@@ -71,7 +54,7 @@ impl DeleteCard {
                 return;
             }
         };
-        let card_id = match DeleteCard::get_card_id(parent) {
+        let card_id = match CardWidget::get_card_id(parent) {
             Ok(id) => id,
             Err(err) => {
                 ErrorDialog::show(parent, &err.to_string());

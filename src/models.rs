@@ -39,12 +39,14 @@ pub trait Model {
         Ok(true)
     }
 
-    /// Instantiate an empty object
-    fn from_empty() -> Self;
+    /// Instantiate an 'empty' object
+    fn from_empty(conn: &sqlite::Connection) -> Result<Self, DatabaseError> where Self: Sized;
 
     /// Instantiate an object from given SQLite row
-    fn from_row(row: &[sqlite::Value]) -> Result<Self, DatabaseError>
-        where Self: Sized;
+    fn from_row(
+        conn: &sqlite::Connection,
+        row: &[sqlite::Value],
+    ) -> Result<Self, DatabaseError> where Self: Sized;
 
     /// Insert an item into the database, returning the id; default implementation available
     ///
@@ -71,7 +73,7 @@ pub trait Model {
         let mut cursor = conn.prepare(Self::STATEMENT_SELECT)?.cursor();
         cursor.bind(&[sqlite::Value::Integer(id)])?;
         while let Some(row) = cursor.next()? {
-            let item = Self::from_row(row)?;
+            let item = Self::from_row(&conn, row)?;
             return Ok(item);
         }
         Err(DatabaseError::NotFound)
@@ -86,7 +88,7 @@ pub trait Model {
         let mut cursor = conn.prepare(Self::STATEMENT_SELECT_ALL)?.cursor();
         let mut items = Vec::new();
         while let Some(row) = cursor.next()? {
-            let item = Self::from_row(row)?;
+            let item = Self::from_row(conn, row)?;
             items.push(item);
         }
         Ok(items)

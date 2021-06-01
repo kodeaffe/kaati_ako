@@ -8,7 +8,7 @@ use gio::ActionMapExt;
 use gtk::{ContainerExt, GtkApplicationExt, GtkWindowExt, WidgetExt};
 
 use dialogs::about::About;
-use dialogs::addcard::AddCard;
+use dialogs::cardeditor::CardEditor;
 use dialogs::deletecard::DeleteCard;
 use widgets::card::Card;
 use widgets::content::Content;
@@ -38,6 +38,8 @@ impl UI {
             "app.add_card", &["<Primary>A"]);
         app.set_accels_for_action(
             "app.delete_card", &["<Primary>D"]);
+        app.set_accels_for_action(
+            "app.edit_card", &["<Primary>E"]);
         app.set_accels_for_action("app.quit", &["<Primary>Q"]);
     }
 
@@ -57,7 +59,7 @@ impl UI {
 
         let add_card = gio::SimpleAction::new("add_card", None);
         add_card.connect_activate(glib::clone!(@weak window => move |_, _| {
-            AddCard::show(&window);
+            CardEditor::show_add(&window);
         }));
         app.add_action(&add_card);
 
@@ -67,6 +69,12 @@ impl UI {
             DeleteCard::show(&window);
         }));
         app.add_action(&delete_card);
+
+        let edit_card = gio::SimpleAction::new("edit_card", None);
+        edit_card.connect_activate(glib::clone!(@weak window => move |_, _| {
+            CardEditor::show_edit(&window);
+        }));
+        app.add_action(&edit_card);
 
         let next_card = gio::SimpleAction::new("next_card", None);
         next_card.connect_activate(glib::clone!(@weak window => move |_, _| {

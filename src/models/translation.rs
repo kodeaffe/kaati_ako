@@ -43,11 +43,6 @@ impl Translation {
         Ok(translations)
     }
 
-    /// Instantiate a new Translation for given card, language, text and description
-    pub fn new(card_id: i64, language_id: i64, text: String, description: String) -> Translation {
-        Translation { id: 0, card_id, language_id, text, description }
-    }
-
     /// Save a Translation to database (insert or update)
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
         let mut values = vec![
@@ -78,13 +73,16 @@ impl Model for Translation {
     const STATEMENT_UPDATE: &'static str =
         "UPDATE translation SET card_id = ?, language_id = ?, text = ?, description = ? WHERE id = ?";
 
-    fn from_empty() -> Translation {
-        Translation {
+    fn from_empty(_: &sqlite::Connection) -> Result<Translation, DatabaseError> {
+        Ok(Translation {
             id: 0, card_id: 0, language_id: 0, text: "".to_string(), description: "".to_string()
-        }
+        })
     }
 
-    fn from_row(row: &[sqlite::Value]) -> Result<Translation, DatabaseError> {
+    fn from_row(
+        _: &sqlite::Connection,
+        row: &[sqlite::Value],
+    ) -> Result<Translation, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
             None => { return Err(DatabaseError::ValueNotInteger); },

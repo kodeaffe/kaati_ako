@@ -1,5 +1,7 @@
 //! Module for the flash card widget
 
+use std::error::Error;
+
 use glib::{Cast, ObjectExt};
 use gtk::{BoxExt, ContainerExt, LabelExt, Notebook, WidgetExt};
 use gtk::prelude::NotebookExtManual;
@@ -11,7 +13,7 @@ use crate::models::category::Category;
 use crate::models::language::Language;
 use crate::models::translation::Translation;
 use crate::ui::{WIDGET_NAME_CARD, WIDGET_NAME_CONTENT};
-use crate::ui::dialogs::error::Error;
+use crate::ui::dialogs::error::Error as ErrorDialog;
 
 
 /// A widget for a flash card
@@ -51,15 +53,6 @@ impl Card {
         Ok((page, label))
     }
 
-    /// Get a card with given id from database, including category and translations
-    fn get_card(conn: &sqlite::Connection, card_id: i64) -> Result<CardModel, DatabaseError> {
-        let id = if card_id == 0 { CardModel::random_id(&conn)? } else { card_id };
-        let mut card = CardModel::load(conn, id)?;
-        card.category = Category::load(conn, card.category_id)?;
-        card.translations = Translation::load_for_card(conn, card.id)?;
-        Ok(card)
-    }
-
     /// Build a flash card as Notebook widget, uses a random card if given card_id has value 0
     pub fn build(window: &gtk::ApplicationWindow, card_id: i64) -> gtk::Notebook {
         let notebook = gtk::Notebook::new();
@@ -69,14 +62,14 @@ impl Card {
         let conn = match get_connection() {
             Ok(conn) => conn,
             Err(err) => {
-                Error::show(window, &err.to_string());
+                ErrorDialog::show(window, &err.to_string());
                 return notebook;
             }
         };
-        let card = match Card::get_card(&conn, card_id) {
+        let card = match CardModel::get(&conn, card_id) {
             Ok(card) => card,
             Err(err) => {
-                Error::show(window, &err.to_string());
+                ErrorDialog::show(window, &err.to_string());
                 return notebook;
             }
         };
@@ -86,7 +79,7 @@ impl Card {
                     notebook.append_page(&page, Some(&label));
                 }
                 Err(err) => {
-                    Error::show(window, &err.to_string());
+                    ErrorDialog::show(window, &err.to_string());
                     return notebook;
                 }
             }
@@ -118,6 +111,21 @@ impl Card {
             }
         }
         None
+    }
+
+    /// Get id of the current card
+    pub fn get_card_id(parent: &gtk::ApplicationWindow) -> Result<i64, Box<dyn Error>> {
+        match Card::find(parent) {
+            Some(card) => {
+                unsafe {
+                    match card.get_data::<i64>("card_id") {
+                        Some(id) => Ok(*id),
+                        None => Err("Cannot get card id from widget!")?,
+                    }
+                }
+            },
+            _ => Err("Cannot find card widget!")?,
+        }
     }
 
     /// Replace the shown flash card by the card with given id

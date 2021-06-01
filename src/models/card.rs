@@ -4,6 +4,7 @@ use sqlite;
 
 use crate::database::DatabaseError;
 use crate::models::category::Category;
+use crate::models::language::Language;
 use crate::models::translation::Translation;
 use super::Model;
 
@@ -25,11 +26,15 @@ pub struct Card {
 
 
 impl Card {
-    /// Instantiate a new Card for given category
-    pub fn new(category_id: i64) -> Card {
-        let mut card = Card::from_empty();
-        card.category_id = category_id;
-        card
+    /// Get a card with given id from database, including category and translations
+    ///
+    /// If card id is 0, a random card will be retrieved
+    pub fn get(conn: &sqlite::Connection, card_id: i64) -> Result<Card, DatabaseError> {
+        let id = if card_id == 0 { Card::random_id(&conn)? } else { card_id };
+        let mut card = Card::load(conn, id)?;
+        card.category = Category::load(conn, card.category_id)?;
+        card.translations = Translation::load_for_card(conn, card.id)?;
+        Ok(card)
     }
 
     /// Get the id of a random Card
@@ -67,16 +72,23 @@ impl Model for Card {
     const STATEMENT_SELECT_ALL: &'static str = "SELECT id, category_id FROM card ORDER BY id";
     const STATEMENT_UPDATE: &'static str = "UPDATE card SET category_id = ? WHERE id = ?";
 
-    fn from_empty() -> Card {
-        Card {
+    fn from_empty(conn: &sqlite::Connection) -> Result<Card, DatabaseError> {
+        let languages = Language::load_all(&conn)?;
+        let mut translations = Vec::new();
+        for language in languages {
+            let mut translation = Translation::from_empty(&conn)?;
+            translation.language_id = language.id;
+            translations.push(translation);
+        }
+        Ok(Card {
             id: 0,
             category_id: 0,
-            category: Category::from_empty(),
-            translations: vec![Translation::from_empty()],
-        }
+            category: Category::from_empty(&conn)?,
+            translations,
+        })
     }
 
-    fn from_row(row: &[sqlite::Value]) -> Result<Card, DatabaseError> {
+    fn from_row(conn: &sqlite::Connection, row: &[sqlite::Value]) -> Result<Card, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
             None => { return Err(DatabaseError::ValueNotInteger); },
@@ -85,7 +97,7 @@ impl Model for Card {
             Some(id) => id,
             None => { return Err(DatabaseError::ValueNotInteger); },
         };
-        let mut card = Card::from_empty();
+        let mut card = Card::from_empty(&conn)?;
         card.id = id;
         card.category_id = category_id;
         Ok(card)
