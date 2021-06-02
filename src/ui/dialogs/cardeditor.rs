@@ -52,8 +52,8 @@ impl CardEditor {
         Ok(combo)
     }
 
-    /// Build the language grid
-    fn build_languages(
+    /// Build the translation grid
+    fn build_translations(
         conn: &sqlite::Connection,
         languages: &Vec<Language>,
         translations: &Vec<Translation>,
@@ -114,7 +114,7 @@ impl CardEditor {
         content.pack_start(&label, false, false, spacing);
         let combo = CardEditor::build_category(&conn, card.category_id)?;
         content.pack_start(&combo, false, false, spacing);
-        let grid = CardEditor::build_languages(&conn, &languages, &card.translations)?;
+        let grid = CardEditor::build_translations(&conn, &languages, &card.translations)?;
         content.pack_start(&grid, false, false, spacing);
         let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
         content.pack_end(&separator, false, false, spacing);
@@ -126,21 +126,83 @@ impl CardEditor {
         Ok(dialog)
     }
 
-    /// Get category id from widget's selection
-    fn get_category_id(
+    /// Handle the category when the dialog has been accepted
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - The connection to the database
+    /// * `category_widget` - Widget which holds the category
+    /// * `card_id` - Identifier of the card which was accepted
+    fn accept_category(
         conn: &sqlite::Connection,
-        widget: &gtk::ComboBoxText,
-    ) -> Result<i64, Box<dyn Error>> {
-        match widget.get_active_text() {
+        category_widget: &gtk::ComboBoxText,
+        card_id: i64,
+    ) -> Result<Card, Box<dyn Error>> {
+        let mut card = CardEditor::get_card(&conn, card_id)?;
+        let category_id = match category_widget.get_active_text() {
             Some(name)  => {
                 let category = Category::load_by_name(&conn, name.to_string())?;
-                Ok(category.id)
+                category.id
             },
             None => Err("No category selected!")?,
+        };
+        if category_id != card.category_id {
+            card.category_id = category_id;
+            card.save(&conn)?;
         }
+        Ok(card)
+    }
+
+    /// Handle a single translation when the dialog has been accepted for a given language
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` -
+    /// * `translations_widget` - Widget which holds all translation texts & descriptions
+    /// * `card` - Card which has been accepted
+    /// * `language` - Language to process
+    fn accept_translation(
+        conn: &sqlite::Connection,
+        translations_widget: &gtk::Grid,
+        card: &mut Card,
+        language: &Language,
+    ) -> Result<bool, DatabaseError> {
+        let mut text = String::new();
+        let name_text = format!("text_{}", language.id);
+        let mut description = String::new();
+        let name_description = format!("description_{}", language.id);
+        // FIXME: Better way to get the widget?
+        for child in translations_widget.get_children() {
+            let widget_name = child.get_widget_name();
+            if widget_name == name_text {
+                text = match child.downcast::<gtk::Entry>() {
+                    Ok(entry) => entry.get_buffer().get_text(),
+                    _ => "".to_string()
+                };
+            } else if widget_name == name_description {
+                description = match child.downcast::<gtk::Entry>() {
+                    Ok(entry) => entry.get_buffer().get_text(),
+                    _ => "".to_string()
+                };
+            }
+        }
+        for translation in &mut card.translations {
+            if translation.language_id == language.id {
+                translation.card_id = card.id;
+                translation.text = text.clone();
+                translation.description = description.clone();
+                translation.save(&conn)?;
+            }
+        }
+        Ok(true)
     }
 
     /// Get Card by given card id
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - The connection to the database
+    /// * `card_id` - Identifier of the card to get. If 0, an empty card will be retrieved.
     fn get_card(conn: &sqlite::Connection, card_id: i64) -> Result<Card, DatabaseError> {
         let card = if card_id == 0 {
             Card::from_empty(&conn)?
@@ -152,72 +214,38 @@ impl CardEditor {
 
     /// When the dialog is accepted, respond by saving the provided data into a new card and replace
     /// the currently shown CardWidget
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The parent widget of the dialog aka application window
+    /// * `conn`- The connection to the database
+    /// * `languages` - A vector with all supported languages
+    /// * `category_widget` - The widget which holds the accepted category
+    /// * `translations_widget` - The widget which holds the accepted translations
+    /// * `card_id` - Identifier of the card to handle, cannot be a `Card` because of:
+    ///   ```cannot borrow `card` as mutable, as it is a captured variable in a `Fn` closure```
     fn response_accept(
         parent: &gtk::ApplicationWindow,
         conn: &sqlite::Connection,
         languages: &Vec<Language>,
-        combo: &gtk::ComboBoxText,
-        grid: &gtk::Grid,
+        category_widget: &gtk::ComboBoxText,
+        translations_widget: &gtk::Grid,
         card_id: i64,
     ) {
-        let category_id = match CardEditor::get_category_id(&conn, &combo) {
-            Ok(id) => id,
-            Err(err) => {
-                ErrorDialog::show(&parent, &err.to_string());
-                return;
-            }
-        };
-        // Cannot borrow card as mutable, hence we get it by card id here
-        let mut card = match CardEditor::get_card(&conn, card_id) {
+        let mut card = match CardEditor::accept_category(&conn, &category_widget, card_id) {
             Ok(card) => card,
             Err(err) => {
                 ErrorDialog::show(&parent, &err.to_string());
                 return;
             }
         };
-        if category_id != card.category_id {
-            card.category_id = category_id;
-            match card.save(&conn) {
+        for language in languages {
+            match CardEditor::accept_translation(&conn, &translations_widget, &mut card, &language) {
                 Err(err) => {
                     ErrorDialog::show(&parent, &err.to_string());
                     return;
                 },
                 _ => {},
-            }
-        }
-        for language in languages {
-            let mut text = String::new();
-            let name_text = format!("text_{}", language.id);
-            let mut description = String::new();
-            let name_description = format!("description_{}", language.id);
-            // FIXME: Better way to get the widget?
-            for child in grid.get_children() {
-                let widget_name = child.get_widget_name();
-                if widget_name == name_text {
-                    text = match child.downcast::<gtk::Entry>() {
-                        Ok(entry) => entry.get_buffer().get_text(),
-                        _ => "".to_string()
-                    };
-                } else if widget_name == name_description {
-                    description = match child.downcast::<gtk::Entry>() {
-                        Ok(entry) => entry.get_buffer().get_text(),
-                        _ => "".to_string()
-                    };
-                }
-            }
-            for translation in &mut card.translations {
-                if translation.language_id == language.id {
-                    translation.card_id = card.id;
-                    translation.text = text.clone();
-                    translation.description = description.clone();
-                    match translation.save(&conn) {
-                        Err(err) => {
-                            ErrorDialog::show(&parent, &err.to_string());
-                            return;
-                        },
-                        _ => {},
-                    }
-                }
             }
         }
         CardWidget::replace(&parent, card.id);
