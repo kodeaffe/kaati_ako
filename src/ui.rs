@@ -10,7 +10,7 @@ use gtk::{ContainerExt, GtkApplicationExt, GtkWindowExt, WidgetExt};
 use dialogs::about::About;
 use dialogs::cardeditor::CardEditor;
 use dialogs::deletecard::DeleteCard;
-use widgets::card::Card;
+use widgets::cardnotebook::CardNotebook;
 use widgets::content::Content;
 
 
@@ -78,7 +78,7 @@ impl UI {
 
         let next_card = gio::SimpleAction::new("next_card", None);
         next_card.connect_activate(glib::clone!(@weak window => move |_, _| {
-            Card::replace(&window, 0);
+            CardNotebook::replace(&window, 0);
         }));
         app.add_action(&next_card);
     }

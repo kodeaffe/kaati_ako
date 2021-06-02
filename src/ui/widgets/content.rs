@@ -3,7 +3,7 @@
 use gtk::{ActionBarExt, BoxExt, ButtonExt, WidgetExt};
 
 use crate::ui::WIDGET_NAME_CONTENT;
-use super::card::Card;
+use super::cardnotebook::CardNotebook;
 
 
 /// The application's content widget
@@ -17,7 +17,7 @@ impl Content {
         let next = gtk::Button::from_icon_name(
             Some("go-next"), gtk::IconSize::Button);
         next.connect_clicked(glib::clone!(@weak window => move |_| {
-            Card::replace(&window, 0);
+            CardNotebook::replace(&window, 0);
         }));
         action_bar.pack_start(&next);
         let label = gtk::Label::new(Some("Press button or type <n> for next random card."));
@@ -30,7 +30,7 @@ impl Content {
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
         content.set_widget_name(WIDGET_NAME_CONTENT);
 
-        let card = Card::build(window, 0);
+        let card = CardNotebook::build(window, 0);
         content.pack_start(&card, true, true, 10);
 
         let action_bar = Content::build_action_bar(window);

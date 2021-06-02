@@ -8,7 +8,7 @@ use gtk::prelude::NotebookExtManual;
 
 use crate::database::{get_connection, DatabaseError};
 use crate::models::Model;
-use crate::models::card::Card as CardModel;
+use crate::models::card::Card;
 use crate::models::category::Category;
 use crate::models::language::Language;
 use crate::models::translation::Translation;
@@ -17,10 +17,10 @@ use crate::ui::dialogs::error::Error as ErrorDialog;
 
 
 /// A widget for a flash card
-pub struct Card;
+pub struct CardNotebook;
 
 /// Implementation of the flash card widget
-impl Card {
+impl CardNotebook {
     /// Build a card's notebook page for the given translation
     fn build_page(
         conn: &sqlite::Connection,
@@ -67,7 +67,7 @@ impl Card {
                 return notebook;
             }
         };
-        let card = match CardModel::get(&conn, card_id) {
+        let card = match Card::get(&conn, card_id) {
             Ok(card) => card,
             Err(err) => {
                 ErrorDialog::show(window, &err.to_string());
@@ -82,7 +82,7 @@ impl Card {
             }
         };
         for translation in translations {
-            match Card::build_page(&conn, card.category_id, &translation) {
+            match CardNotebook::build_page(&conn, card.category_id, &translation) {
                 Ok((page, label)) => {
                     notebook.append_page(&page, Some(&label));
                 }
@@ -123,7 +123,7 @@ impl Card {
 
     /// Get id of the current card
     pub fn get_card_id(parent: &gtk::ApplicationWindow) -> Result<i64, Box<dyn Error>> {
-        match Card::find(parent) {
+        match CardNotebook::find(parent) {
             Some(card) => {
                 unsafe {
                     match card.get_data::<i64>("card_id") {
@@ -138,14 +138,14 @@ impl Card {
 
     /// Replace the shown flash card by the card with given id
     pub fn replace(window: &gtk::ApplicationWindow, card_id: i64) {
-        match Card::find(window) {
+        match CardNotebook::find(window) {
             Some(card) => {
                 match card.get_parent() {
                     Some(parent) => {
                         match parent.downcast::<gtk::Box>() {
                             Ok(vbox) => {
                                 vbox.remove(&card);
-                                let card = Card::build(window, card_id);
+                                let card = CardNotebook::build(window, card_id);
                                 vbox.pack_start(&card, true, true, 10);
                                 vbox.show_all();
                                 // Focus must be grabbed after being shown

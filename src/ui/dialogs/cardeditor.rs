@@ -21,7 +21,7 @@ use crate::models::card::Card;
 use crate::models::category::Category;
 use crate::models::language::Language;
 use crate::models::translation::Translation;
-use crate::ui::widgets::card::Card as CardWidget;
+use crate::ui::widgets::cardnotebook::CardNotebook;
 use super::error::Error as ErrorDialog;
 
 
@@ -209,7 +209,7 @@ impl CardEditor {
     }
 
     /// When the dialog is accepted, respond by saving the provided data into a new card and replace
-    /// the currently shown CardWidget
+    /// the currently shown card
     ///
     /// # Arguments
     ///
@@ -244,7 +244,7 @@ impl CardEditor {
                 _ => {},
             }
         }
-        CardWidget::replace(&parent, card.id);
+        CardNotebook::replace(&parent, card.id);
     }
 
     /// Show the dialog for card given by id
@@ -268,7 +268,7 @@ impl CardEditor {
 
     /// Show the dialog for editing
     pub fn show_edit(parent: &gtk::ApplicationWindow) {
-        let card_id = match CardWidget::get_card_id(&parent) {
+        let card_id = match CardNotebook::get_card_id(&parent) {
             Ok(id) => id,
             Err(err) => {
                 ErrorDialog::show(&parent, &err.to_string());

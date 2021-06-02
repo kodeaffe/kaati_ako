@@ -5,7 +5,7 @@ use gtk::{BoxExt, DialogExt, GtkWindowExt, WidgetExt};
 use crate::database::get_connection;
 use crate::models::Model;
 use crate::models::card::Card;
-use crate::ui::widgets::card::Card as CardWidget;
+use crate::ui::widgets::cardnotebook::CardNotebook;
 use super::error::Error as ErrorDialog;
 
 
@@ -54,7 +54,7 @@ impl DeleteCard {
                 return;
             }
         };
-        let card_id = match CardWidget::get_card_id(parent) {
+        let card_id = match CardNotebook::get_card_id(parent) {
             Ok(id) => id,
             Err(err) => {
                 ErrorDialog::show(parent, &err.to_string());
@@ -69,7 +69,7 @@ impl DeleteCard {
             _ => {},
         }
         match Card::random_id(&conn) {
-            Ok(id) => CardWidget::replace(&parent, id),
+            Ok(id) => CardNotebook::replace(&parent, id),
             Err(err) => ErrorDialog::show(parent, &err.to_string()),
         }
     }

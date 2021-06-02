@@ -1,4 +1,4 @@
 //! Widgets of the application
 
-pub mod card;
+pub mod cardnotebook;
 pub mod content;
