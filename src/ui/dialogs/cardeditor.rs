@@ -55,22 +55,15 @@ impl CardEditor {
     /// Build the translation grid
     fn build_translations(
         conn: &sqlite::Connection,
+        card_id: i64,
         languages: &Vec<Language>,
-        translations: &Vec<Translation>,
     ) -> Result<gtk::Grid, DatabaseError> {
         let grid = gtk::Grid::new();
         grid.set_column_spacing(5);
         grid.set_row_spacing(10);
-        let empty_translation = Translation::from_empty(&conn)?;
         for language in languages {
-            let translation = (|| {
-                for trans in translations {
-                    if trans.language_id == language.id {
-                        return trans;
-                    }
-                };
-                return &empty_translation;
-            })();
+            let translation = Translation::load_for_card_language(
+                &conn, card_id, language.id)?;
             let label = gtk::Label::new(Some(&language.name));
             label.set_halign(gtk::Align::Start);
             // Map language id to top: 1 -> 0, 1 ; 2 -> 2, 3 ; 3 -> 4, 5
@@ -106,21 +99,27 @@ impl CardEditor {
         let card = CardEditor::get_card(&conn, card_id)?;
         let spacing = 10;
         let languages = Language::load_all(&conn)?;
+
         let content = dialog.get_content_area();
         content.set_margin_start(spacing as i32);
         content.set_margin_end(spacing as i32);
+
         let label = gtk::Label::new(Some("Category"));
         label.set_halign(gtk::Align::Start);
         content.pack_start(&label, false, false, spacing);
+
         let combo = CardEditor::build_category(&conn, card.category_id)?;
         content.pack_start(&combo, false, false, spacing);
-        let grid = CardEditor::build_translations(&conn, &languages, &card.translations)?;
+
+        let grid = CardEditor::build_translations(&conn, card.id, &languages)?;
         content.pack_start(&grid, false, false, spacing);
+
         let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
         content.pack_end(&separator, false, false, spacing);
+
         dialog.connect_response(glib::clone!(@weak parent => move |_, response_type| {
             if response_type == gtk::ResponseType::Accept {
-                CardEditor::response_accept(&parent, &conn, &languages, &combo, &grid, card_id);
+                CardEditor::response_accept(&parent, &conn, card.id, &languages, &combo, &grid);
             }
         }));
         Ok(dialog)
@@ -130,7 +129,7 @@ impl CardEditor {
     ///
     /// # Arguments
     ///
-    /// * `conn` - The connection to the database
+    /// * `conn` - Connection to the database
     /// * `category_widget` - Widget which holds the category
     /// * `card_id` - Identifier of the card which was accepted
     fn accept_category(
@@ -163,10 +162,10 @@ impl CardEditor {
     /// * `language` - Language to process
     fn accept_translation(
         conn: &sqlite::Connection,
+        card_id: i64,
         translations_widget: &gtk::Grid,
-        card: &mut Card,
         language: &Language,
-    ) -> Result<bool, DatabaseError> {
+    ) -> Result<Translation, DatabaseError> {
         let mut text = String::new();
         let name_text = format!("text_{}", language.id);
         let mut description = String::new();
@@ -186,28 +185,25 @@ impl CardEditor {
                 };
             }
         }
-        for translation in &mut card.translations {
-            if translation.language_id == language.id {
-                translation.card_id = card.id;
-                translation.text = text.clone();
-                translation.description = description.clone();
-                translation.save(&conn)?;
-            }
-        }
-        Ok(true)
+        let mut translation = Translation::load_for_card_language(
+            &conn, card_id, language.id)?;
+        translation.text = text.clone();
+        translation.description = description.clone();
+        translation.save(&conn)?;
+        Ok(translation)
     }
 
     /// Get Card by given card id
     ///
     /// # Arguments
     ///
-    /// * `conn` - The connection to the database
+    /// * `conn` - Connection to the database
     /// * `card_id` - Identifier of the card to get. If 0, an empty card will be retrieved.
     fn get_card(conn: &sqlite::Connection, card_id: i64) -> Result<Card, DatabaseError> {
         let card = if card_id == 0 {
-            Card::from_empty(&conn)?
+            Card::from_empty()
         } else {
-            Card::get(&conn, card_id)?
+            Card::load(&conn, card_id)?
         };
         Ok(card)
     }
@@ -218,7 +214,7 @@ impl CardEditor {
     /// # Arguments
     ///
     /// * `parent` - The parent widget of the dialog aka application window
-    /// * `conn`- The connection to the database
+    /// * `conn`- Connection to the database
     /// * `languages` - A vector with all supported languages
     /// * `category_widget` - The widget which holds the accepted category
     /// * `translations_widget` - The widget which holds the accepted translations
@@ -227,12 +223,12 @@ impl CardEditor {
     fn response_accept(
         parent: &gtk::ApplicationWindow,
         conn: &sqlite::Connection,
+        card_id: i64,
         languages: &Vec<Language>,
         category_widget: &gtk::ComboBoxText,
         translations_widget: &gtk::Grid,
-        card_id: i64,
     ) {
-        let mut card = match CardEditor::accept_category(&conn, &category_widget, card_id) {
+        let card = match CardEditor::accept_category(&conn, &category_widget, card_id) {
             Ok(card) => card,
             Err(err) => {
                 ErrorDialog::show(&parent, &err.to_string());
@@ -240,7 +236,7 @@ impl CardEditor {
             }
         };
         for language in languages {
-            match CardEditor::accept_translation(&conn, &translations_widget, &mut card, &language) {
+            match CardEditor::accept_translation(&conn, card.id, &translations_widget, &language) {
                 Err(err) => {
                     ErrorDialog::show(&parent, &err.to_string());
                     return;

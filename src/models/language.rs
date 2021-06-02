@@ -44,11 +44,11 @@ impl Model for Language {
     const STATEMENT_SELECT_ALL: &'static str = "SELECT id, code, name FROM language ORDER BY name";
     const STATEMENT_UPDATE: &'static str = "UPDATE language SET code = ?, name = ? WHERE id = ?";
 
-    fn from_empty(_: &sqlite::Connection) -> Result<Language, DatabaseError> {
-        Ok(Language { id: 0, code: "".to_string(), name: "".to_string() })
+    fn from_empty() -> Language {
+        Language { id: 0, code: "".to_string(), name: "".to_string() }
     }
 
-    fn from_row(_: &sqlite::Connection, row: &[sqlite::Value]) -> Result<Language, DatabaseError> {
+    fn from_row(row: &[sqlite::Value]) -> Result<Language, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
             None => { return Err(DatabaseError::ValueNotInteger); },

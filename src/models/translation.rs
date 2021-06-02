@@ -43,6 +43,37 @@ impl Translation {
         Ok(translations)
     }
 
+    /// Load a translation for a given card and language from the database
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
+    /// * `card_id` - Identifier of the card for which to load the translation
+    /// * `language_id` - Identifier of the language for which to load the translation
+    pub fn load_for_card_language(
+        conn: &sqlite::Connection,
+        card_id: i64,
+        language_id: i64,
+    ) -> Result<Translation, DatabaseError> {
+        let mut translation = Translation::from_empty();
+        translation.card_id = card_id;
+        translation.language_id = language_id;
+        let statement = format!(
+            "SELECT id, card_id, language_id, text, description FROM {} WHERE card_id = ? AND language_id = ?",
+            Translation::TABLE_NAME,
+        );
+        let mut cursor = conn.prepare(statement)?.cursor();
+        cursor.bind(&[
+            sqlite::Value::Integer(card_id),
+            sqlite::Value::Integer(language_id),
+        ])?;
+        while let Some(row) = cursor.next()? {
+            translation = Translation::from_row(row)?;
+            break;
+        }
+        Ok(translation)
+    }
+
     /// Save a Translation to database (insert or update)
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
         let mut values = vec![
@@ -73,16 +104,13 @@ impl Model for Translation {
     const STATEMENT_UPDATE: &'static str =
         "UPDATE translation SET card_id = ?, language_id = ?, text = ?, description = ? WHERE id = ?";
 
-    fn from_empty(_: &sqlite::Connection) -> Result<Translation, DatabaseError> {
-        Ok(Translation {
+    fn from_empty() -> Translation {
+        Translation {
             id: 0, card_id: 0, language_id: 0, text: "".to_string(), description: "".to_string()
-        })
+        }
     }
 
-    fn from_row(
-        _: &sqlite::Connection,
-        row: &[sqlite::Value],
-    ) -> Result<Translation, DatabaseError> {
+    fn from_row(row: &[sqlite::Value]) -> Result<Translation, DatabaseError> {
         let id = match row[0].as_integer() {
             Some(id) => id,
             None => { return Err(DatabaseError::ValueNotInteger); },

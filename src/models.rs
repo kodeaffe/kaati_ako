@@ -28,9 +28,12 @@ pub trait Model {
     /// SQL Statement to update one item in the database
     const STATEMENT_UPDATE: &'static str;
 
-    /// Delete one object from database by id
+    /// Delete one item from database by id
     ///
-    /// Default implementation available
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
+    /// * `id` - Identifier of the item to delete
     fn delete(conn: &sqlite::Connection, id: i64) -> Result<bool, DatabaseError> where Self: Sized {
         let statement = format!("DELETE FROM {} where id = ?", Self::TABLE_NAME);
         let mut cursor = conn.prepare(statement)?.cursor();
@@ -39,21 +42,29 @@ pub trait Model {
         Ok(true)
     }
 
-    /// Instantiate an 'empty' object
-    fn from_empty(conn: &sqlite::Connection) -> Result<Self, DatabaseError> where Self: Sized;
+    /// Instantiate an 'empty' item
+    ///
+    /// 'Empty' means all fields are properly initialised.
+    fn from_empty() -> Self where Self: Sized;
 
-    /// Instantiate an object from given SQLite row
-    fn from_row(
-        conn: &sqlite::Connection,
-        row: &[sqlite::Value],
-    ) -> Result<Self, DatabaseError> where Self: Sized;
+    /// Instantiate an item from given row
+    ///
+    /// # Arguments
+    ///
+    /// * `row` - Values retrieved from the database
+    fn from_row(row: &[sqlite::Value]) -> Result<Self, DatabaseError> where Self: Sized;
 
     /// Insert an item into the database, returning the id; default implementation available
     ///
-    /// Default implementation available
+    /// # Arguments
     ///
-    /// `Self::STATEMENT_INSERT` is used to update the data and the given values must correspond to
-    /// that statement.
+    /// * `conn` - Connection to the database
+    /// * `values` - Values to insert into the database, they must correspond to
+    /// `Self::STATEMENT_INSERT`
+    ///
+    /// # Notes
+    ///
+    /// * `Self::STATEMENT_INSERT` is used to update the data
     fn insert(
         conn: &sqlite::Connection, values: &Vec<sqlite::Value>,
     ) -> Result<i64, DatabaseError> where Self: Sized {
@@ -64,42 +75,59 @@ pub trait Model {
         Ok(id)
     }
 
-    /// Load one object from database by id
+    /// Load one item from database by id
     ///
-    /// Default implementation available
+    /// # Arguments
     ///
-    /// `Self::STATEMENT_SELECT` is used to load the data
+    /// * `conn` - Connection to the database
+    /// * `id` - Identifier of the item to load
+    ///
+    /// # Notes
+    ///
+    /// * Related items are not loaded automatically!
+    /// * `Self::STATEMENT_SELECT` is used to load the data
     fn load(conn: &sqlite::Connection, id: i64) -> Result<Self, DatabaseError> where Self: Sized {
         let mut cursor = conn.prepare(Self::STATEMENT_SELECT)?.cursor();
         cursor.bind(&[sqlite::Value::Integer(id)])?;
         while let Some(row) = cursor.next()? {
-            let item = Self::from_row(&conn, row)?;
+            let item = Self::from_row(row)?;
             return Ok(item);
         }
         Err(DatabaseError::NotFound)
     }
 
-    /// Load all objects from database
+    /// Load all items from database
     ///
-    /// Default implementation available
+    /// # Arguments
     ///
-    /// `Self::STATEMENT_SELECT_ALL` is used to load the data
+    /// * `conn` - Connection to the database
+    ///
+    /// # Notes
+    ///
+    /// * Related items are not loaded automatically!
+    /// * `Self::STATEMENT_SELECT_ALL` is used to load the data
     fn load_all(conn: &sqlite::Connection) -> Result<Vec<Self>, DatabaseError> where Self: Sized {
         let mut cursor = conn.prepare(Self::STATEMENT_SELECT_ALL)?.cursor();
         let mut items = Vec::new();
         while let Some(row) = cursor.next()? {
-            let item = Self::from_row(conn, row)?;
+            let item = Self::from_row(row)?;
             items.push(item);
         }
         Ok(items)
     }
 
-    /// Update an existing object in the database
+    /// Update an existing item in the database
     ///
-    /// Default implementation available
+    /// # Arguments
     ///
-    /// `Self::STATEMENT_UPDATE` is used to update the data and the given values must correspond to
-    /// that statement.
+    /// * `conn` - Connection to the database
+    /// * `values` - Values to update in the database, they must correspond to
+    /// `Self::STATEMENT_UPDATE`
+    ///
+    /// # Notes
+    ///
+    /// * Related items are not updated automatically!
+    /// * `Self::STATEMENT_UPDATE` is used to update the data
     fn update(
         conn: &sqlite::Connection,
         values: &Vec<sqlite::Value>,
@@ -109,4 +137,7 @@ pub trait Model {
         cursor.next()?;
         Ok(true)
     }
+
+    // I wish a save function with the following signature to set the object's new id was possible:
+    //fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError>
 }

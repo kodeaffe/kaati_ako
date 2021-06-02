@@ -24,7 +24,7 @@ impl Card {
     /// Build a card's notebook page for the given translation
     fn build_page(
         conn: &sqlite::Connection,
-        category: &Category,
+        category_id: i64,
         translation: &Translation,
     ) -> Result<(gtk::Box, gtk::Label), DatabaseError> {
         let padding = 10;
@@ -43,6 +43,7 @@ impl Card {
             let description = gtk::Label::new(Some(&translation.description));
             page_bottom.pack_start(&description, false, false, padding);
         }
+        let category = Category::load(&conn, category_id)?;
         let category_label = gtk::Label::new(Some(""));
         category_label.set_markup(&format!("Category: <b>{}</b>", category.name));
         page_bottom.pack_end(&category_label, false, false, padding);
@@ -73,8 +74,15 @@ impl Card {
                 return notebook;
             }
         };
-        for translation in card.translations {
-            match Card::build_page(&conn, &card.category, &translation) {
+        let translations = match Translation::load_for_card(&conn, card.id) {
+            Ok(translations) => translations,
+            Err(err) => {
+                ErrorDialog::show(window, &err.to_string());
+                return notebook;
+            }
+        };
+        for translation in translations {
+            match Card::build_page(&conn, card.category_id, &translation) {
                 Ok((page, label)) => {
                     notebook.append_page(&page, Some(&label));
                 }
