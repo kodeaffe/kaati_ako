@@ -24,6 +24,11 @@ pub struct Translation {
 
 impl Translation {
     /// Load all translations for a given card from the database
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
+    /// * `card_id` - Identifier of the card for which to load the translations
     pub fn load_for_card(
         conn: &sqlite::Connection,
         card_id: i64,
@@ -75,6 +80,10 @@ impl Translation {
     }
 
     /// Save a Translation to database (insert or update)
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
         let mut values = vec![
             sqlite::Value::Integer(self.card_id),

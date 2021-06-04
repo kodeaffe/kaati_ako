@@ -75,6 +75,10 @@ pub fn get_connection() -> Result<sqlite::Connection, DatabaseError> {
 
 
 /// Create a new database from scratch, including some fixture data
+///
+/// # Arguments
+///
+/// * `conn` - Connection to the database
 #[allow(dead_code)]
 pub fn initialise(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
     init_schema(conn)?;
@@ -84,6 +88,10 @@ pub fn initialise(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
 
 
 /// Initialise the database fixtures
+///
+/// # Arguments
+///
+/// * `conn` - Connection to the database
 fn init_fixtures(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
     let result = conn.execute("
         INSERT INTO language (code, name) VALUES ('to', 'Tongan');
@@ -108,6 +116,10 @@ fn init_fixtures(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
 
 
 /// Initialise the database schema
+///
+/// # Arguments
+///
+/// * `conn` - Connection to the database
 fn init_schema(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
     let result = conn.execute("
         DROP TABLE IF EXISTS category;
@@ -143,6 +155,11 @@ fn init_schema(conn: &sqlite::Connection) -> Result<(), DatabaseError> {
 
 
 /// Get the identifier of the last inserted item in the given table
+///
+/// # Arguments
+///
+/// * `conn` - Connection to the database
+/// * `table_name` - Name of the table for which to get the last inserted id
 pub fn last_insert_id(conn: &sqlite::Connection, table_name: &str) -> Result<i64, DatabaseError> {
     // Cannot prepare `SELECT last_insert_rowid() FROM ?` ... Bug?
     let statement = format!("SELECT last_insert_rowid() FROM {}", table_name);

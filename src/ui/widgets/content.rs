@@ -12,6 +12,10 @@ pub struct Content;
 /// The implementation of the application's content widget
 impl Content {
     /// Build the action bar
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The GTK application window
     fn build_action_bar(window: &gtk::ApplicationWindow) -> gtk::ActionBar {
         let action_bar = gtk::ActionBar::new();
         let next = gtk::Button::from_icon_name(
@@ -26,6 +30,10 @@ impl Content {
     }
 
     /// Build the application's content area with flash card and action bar
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The GTK application window
     pub fn build(window: &gtk::ApplicationWindow) -> gtk::Box {
         let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
         content.set_widget_name(WIDGET_NAME_CONTENT);

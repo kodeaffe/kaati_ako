@@ -22,6 +22,12 @@ pub struct CardNotebook;
 /// Implementation of the flash card widget
 impl CardNotebook {
     /// Build a card's notebook page for the given translation
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
+    /// * `category_id` - Identifier of the category for which to build notebook page
+    /// * `translation` - Translation to show on the notebook page
     fn build_page(
         conn: &sqlite::Connection,
         category_id: i64,
@@ -54,7 +60,13 @@ impl CardNotebook {
         Ok((page, label))
     }
 
-    /// Build a flash card as Notebook widget, uses a random card if given card_id has value 0
+    /// Build a flash card as Notebook widget
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The GTK application window
+    /// * `card_id` - Identifier of the card for which to build the notebook. Set to 0 to show a
+    ///               random card.
     pub fn build(window: &gtk::ApplicationWindow, card_id: i64) -> gtk::Notebook {
         let notebook = gtk::Notebook::new();
         notebook.set_widget_name(WIDGET_NAME_CARD);
@@ -99,6 +111,10 @@ impl CardNotebook {
     }
 
     /// Find the currently shown card widget
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The GTK application window
     pub fn find(window: &gtk::ApplicationWindow) -> Option<Notebook> {
         // TODO: Is there a better way to find the box and card?
         for widget in window.get_children() {
@@ -122,8 +138,12 @@ impl CardNotebook {
     }
 
     /// Get id of the current card
-    pub fn get_card_id(parent: &gtk::ApplicationWindow) -> Result<i64, Box<dyn Error>> {
-        match CardNotebook::find(parent) {
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The GTK application window
+    pub fn get_card_id(window: &gtk::ApplicationWindow) -> Result<i64, Box<dyn Error>> {
+        match CardNotebook::find(window) {
             Some(card) => {
                 unsafe {
                     match card.get_data::<i64>("card_id") {
@@ -137,6 +157,11 @@ impl CardNotebook {
     }
 
     /// Replace the shown flash card by the card with given id
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The GTK application window
+    /// * `card_id` - Identifier of the card to use as replacement
     pub fn replace(window: &gtk::ApplicationWindow, card_id: i64) {
         match CardNotebook::find(window) {
             Some(card) => {

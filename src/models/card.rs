@@ -30,6 +30,10 @@ impl Card {
     }
 
     /// Get the id of a random Card
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
     pub fn random_id(conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
         let statement = format!(
             "SELECT id FROM {} ORDER BY RANDOM() LIMIT 1", Card::TABLE_NAME);
@@ -44,6 +48,10 @@ impl Card {
     }
 
     /// Save a Card to database (insert or update)
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
         let mut values = vec![sqlite::Value::Integer(self.category_id)];
         if self.id > 0 {

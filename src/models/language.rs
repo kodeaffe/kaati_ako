@@ -19,6 +19,10 @@ pub struct Language {
 
 impl Language {
     /// Save a Language to database (insert or update)
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
     #[allow(dead_code)]
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
         let mut values = vec![

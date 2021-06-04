@@ -13,7 +13,11 @@ pub struct About;
 
 /// Implementation of the about dialog
 impl About {
-    /// Show the dialog
+    /// Show the about dialog
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The GTK application window
     pub fn show(parent: &gtk::ApplicationWindow) {
         let dialog = gtk::AboutDialog::new();
         dialog.set_authors(&["kodeaffe <lahi+kodeaffe@posteo.de>"]);

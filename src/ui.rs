@@ -16,7 +16,7 @@ use widgets::content::Content;
 
 /// The name of content widget which contains the flash card
 const WIDGET_NAME_CONTENT: &str = "content";
-/// The name of flash card's widget
+/// The name of the flash card's widget
 const WIDGET_NAME_CARD: &str = "card";
 
 
@@ -25,9 +25,20 @@ pub struct UI;
 
 /// The implementation of the application's user interface
 impl UI {
-    /// Add accelerators for the application
+    /// Add keyboard accelerators for the application
     ///
-    /// Currently it handles 'F1', 'n' and 'Ctrl-Q'
+    /// # Arguments
+    ///
+    /// * `app` - The GTK application
+    ///
+    /// # Supported accelerators
+    ///
+    /// * `F1` - Show the about dialog
+    /// * `n` - Show the next card
+    /// * `Ctrl-A` - Show the dialog to add a new card
+    /// * `Ctrl-D` - Show the confirm dialog to delete the current card
+    /// * `Ctrl-E` - Show the dialog to edit the current card
+    /// * `Ctrl-Q` - Quit the application
     fn add_accelerators(app: &gtk::Application) {
         app.set_accels_for_action("app.about", &["F1"]);
         app.set_accels_for_action("app.next_card", &["n"]);
@@ -44,6 +55,20 @@ impl UI {
     }
 
     /// Add actions for the application
+    ///
+    /// # Arguments
+    ///
+    /// * `app` - The GTK application
+    /// * `window` - The GTK application window
+    ///
+    /// # Suppported actions
+    ///
+    /// * `about` - Show the about dialog
+    /// * `add_card` - Show the dialog to add a new card
+    /// * `delete_card` - Show the confirm dialog to delete the current card
+    /// * `edit_card` - Show the dialog to edit the current card
+    /// * `next_card` - Show the next card
+    /// * `quit` - Quit the application
     fn add_actions(app: &gtk::Application, window: &gtk::ApplicationWindow) {
         let quit = gio::SimpleAction::new("quit", None);
         quit.connect_activate(glib::clone!(@weak window => move |_, _| {
@@ -84,6 +109,10 @@ impl UI {
     }
 
     /// Build the application's user interface with window parametrisation and widgets
+    ///
+    /// # Arguments
+    ///
+    /// * `app` - The GTK application
     pub fn build(app: &gtk::Application) {
         let window = gtk::ApplicationWindow::new(app);
         window.set_title("Kaati Ako");
@@ -105,6 +134,10 @@ impl UI {
     }
 
     /// Build the application's menu
+    ///
+    /// # Arguments
+    ///
+    /// * `app` - The GTK application
     fn build_menu(app: &gtk::Application) {
         let menu = gio::Menu::new();
         menu.append(Some("Quit"), Some("app.quit"));

@@ -15,7 +15,11 @@ pub struct DeleteCard;
 /// Implementation of the dialog to delete a card
 impl DeleteCard {
 
-    /// Show the dialog
+    /// Show the dialog to delete the current card
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The GTK application window
     pub fn show(parent: &gtk::ApplicationWindow) {
         let dialog = gtk::Dialog::with_buttons(
             Some("Delete Card"),
@@ -46,6 +50,10 @@ impl DeleteCard {
     }
 
     /// When the dialog is accepted, delete the card and replace it with a random card
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The GTK application window
     fn response_accept(parent: &gtk::ApplicationWindow) {
         let conn = match get_connection() {
             Ok(conn) => conn,

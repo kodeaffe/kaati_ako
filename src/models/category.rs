@@ -35,8 +35,12 @@ impl Category {
         Err(DatabaseError::NotFound)
     }
 
-    #[allow(dead_code)]
     /// Save a Category to database (insert or update)
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
+    #[allow(dead_code)]
     pub fn save(&mut self, conn: &sqlite::Connection) -> Result<i64, DatabaseError> {
         let mut values = vec![sqlite::Value::String(self.name.clone())];
         if self.id > 0 {

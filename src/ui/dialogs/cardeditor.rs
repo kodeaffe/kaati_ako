@@ -30,9 +30,14 @@ pub struct CardEditor;
 
 /// Implementation of the dialog to add a flash card
 impl CardEditor {
+
     /// Build category widget
     ///
-    /// Set `selected` to 0 to have the `default` category selected
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
+    /// * `selected` - The identifier of the selected category. Set to 0 to have the `default`
+    ///                category selected
     fn build_category(
         conn: &sqlite::Connection,
         selected: i64,
@@ -53,6 +58,12 @@ impl CardEditor {
     }
 
     /// Build the translation grid
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - Connection to the database
+    /// * `card_id` - Identifier of the card for which to get translations
+    /// * `languages` - Vector of languages for which to get translations
     fn build_translations(
         conn: &sqlite::Connection,
         card_id: i64,
@@ -85,6 +96,11 @@ impl CardEditor {
     }
 
     /// Build the dialog
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The GTK application window
+    /// * `card_id` - Identifier of the card for which to build the dialog
     fn build(parent: &gtk::ApplicationWindow, card_id: i64) -> Result<gtk::Dialog, DatabaseError> {
         let dialog = gtk::Dialog::with_buttons(
             if card_id > 0 { Some("Edit Card") } else { Some("Add Card") },
@@ -156,9 +172,9 @@ impl CardEditor {
     ///
     /// # Arguments
     ///
-    /// * `conn` -
+    /// * `conn` - Connection to the database
+    /// * `card_id` - Identifier of the card which was accepted
     /// * `translations_widget` - Widget which holds all translation texts & descriptions
-    /// * `card` - Card which has been accepted
     /// * `language` - Language to process
     fn accept_translation(
         conn: &sqlite::Connection,
@@ -215,11 +231,11 @@ impl CardEditor {
     ///
     /// * `parent` - The parent widget of the dialog aka application window
     /// * `conn`- Connection to the database
+    /// * `card_id` - Identifier of the card to handle, cannot be a `Card` because of:
+    ///               ```cannot borrow `card` as mutable, as it is a captured variable in a `Fn` closure```
     /// * `languages` - A vector with all supported languages
     /// * `category_widget` - The widget which holds the accepted category
     /// * `translations_widget` - The widget which holds the accepted translations
-    /// * `card_id` - Identifier of the card to handle, cannot be a `Card` because of:
-    ///   ```cannot borrow `card` as mutable, as it is a captured variable in a `Fn` closure```
     fn response_accept(
         parent: &gtk::ApplicationWindow,
         conn: &sqlite::Connection,
@@ -248,6 +264,11 @@ impl CardEditor {
     }
 
     /// Show the dialog for card given by id
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The GTK application window
+    /// * `card_id` - Identifier of the card for which to show the dialog
     fn show(parent: &gtk::ApplicationWindow, card_id: i64) {
         let dialog = match CardEditor::build(parent, card_id) {
             Ok(dialog) => dialog,
@@ -262,11 +283,19 @@ impl CardEditor {
     }
 
     /// Show the dialog for adding
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The GTK application window
     pub fn show_add(parent: &gtk::ApplicationWindow) {
         CardEditor::show(parent, 0);
     }
 
     /// Show the dialog for editing
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - The GTK application window
     pub fn show_edit(parent: &gtk::ApplicationWindow) {
         let card_id = match CardNotebook::get_card_id(&parent) {
             Ok(id) => id,
