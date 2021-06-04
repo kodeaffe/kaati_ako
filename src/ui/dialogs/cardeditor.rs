@@ -31,6 +31,13 @@ pub struct CardEditor;
 /// Implementation of the dialog to add a flash card
 impl CardEditor {
 
+    /// Prefix to use when constructing the widget name for a translation text;
+    /// to be suffixed by a language id
+    const PREFIX_WIDGET_NAME_TEXT :&'static str = "text";
+    /// Prefix to use when constructing the widget name for a translation description;
+    /// to be suffixed by a language id
+    const PREFIX_WIDGET_NAME_DESCRIPTION :&'static str = "description";
+
     /// Build category widget
     ///
     /// # Arguments
@@ -83,13 +90,15 @@ impl CardEditor {
             let text = gtk::Entry::new();
             text.set_text(&translation.text);
             text.set_placeholder_text(Some("Add text ..."));
-            text.set_widget_name(&format!("text_{}", language.id));
+            text.set_widget_name(
+                &format!("{}_{}", CardEditor::PREFIX_WIDGET_NAME_TEXT, language.id));
             top += 1;
             grid.attach(&text, 0, top, 1, 1);
             let description = gtk::Entry::new();
             description.set_text(&translation.description);
             description.set_placeholder_text(Some("Add description ..."));
-            description.set_widget_name(&format!("description_{}", language.id));
+            description.set_widget_name(
+                &format!("{}_{}", CardEditor::PREFIX_WIDGET_NAME_DESCRIPTION, language.id));
             grid.attach(&description, 1, top, 1, 1);
         }
         Ok(grid)
@@ -124,18 +133,19 @@ impl CardEditor {
         label.set_halign(gtk::Align::Start);
         content.pack_start(&label, false, false, spacing);
 
-        let combo = CardEditor::build_category(&conn, card.category_id)?;
-        content.pack_start(&combo, false, false, spacing);
+        let category = CardEditor::build_category(&conn, card.category_id)?;
+        content.pack_start(&category, false, false, spacing);
 
-        let grid = CardEditor::build_translations(&conn, card.id, &languages)?;
-        content.pack_start(&grid, false, false, spacing);
+        let translations = CardEditor::build_translations(&conn, card.id, &languages)?;
+        content.pack_start(&translations, false, false, spacing);
 
         let separator = gtk::Separator::new(gtk::Orientation::Horizontal);
         content.pack_end(&separator, false, false, spacing);
 
         dialog.connect_response(glib::clone!(@weak parent => move |_, response_type| {
             if response_type == gtk::ResponseType::Accept {
-                CardEditor::response_accept(&parent, &conn, card.id, &languages, &combo, &grid);
+                CardEditor::response_accept(
+                    &parent, &conn, card.id, &languages, &category, &translations);
             }
         }));
         Ok(dialog)
@@ -183,9 +193,10 @@ impl CardEditor {
         language: &Language,
     ) -> Result<Translation, DatabaseError> {
         let mut text = String::new();
-        let name_text = format!("text_{}", language.id);
+        let name_text = format!("{}_{}", CardEditor::PREFIX_WIDGET_NAME_TEXT, language.id);
         let mut description = String::new();
-        let name_description = format!("description_{}", language.id);
+        let name_description = format!(
+            "{}_{}", CardEditor::PREFIX_WIDGET_NAME_DESCRIPTION, language.id);
         // FIXME: Better way to get the widget?
         for child in translations_widget.get_children() {
             let widget_name = child.get_widget_name();
@@ -203,8 +214,8 @@ impl CardEditor {
         }
         let mut translation = Translation::load_for_card_language(
             &conn, card_id, language.id)?;
-        translation.text = text.clone();
-        translation.description = description.clone();
+        translation.text = text;
+        translation.description = description;
         translation.save(&conn)?;
         Ok(translation)
     }
