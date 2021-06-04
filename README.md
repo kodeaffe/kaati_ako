@@ -33,6 +33,6 @@ This package uses a SQLite database.
 ### With installation
 
 - If you want to install the binary to your cargo bin, run `cargo install --path .` .
-- When running the binary, you should provide a path to the database file if it is not called `kaati_ako.sqlite` in your current directory, e.g. `kaati_ako --db_path=/path/to/db.sqlite`.
+- When running the binary, you should provide a path to the database file if it is not called `kaati_ako.sqlite` in your current directory, e.g. `DB_PATH=/path/to/db.sqlite kaati_ako`.
 - You can copy the provided `assets/kaati_ako.desktop` manually into `~/.local/share/applications/` and it should be
   available by your desktop's program starter. You probably need to edit the `Exec` key for the database path.
